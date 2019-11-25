@@ -17,7 +17,7 @@ class Competition(object):
         self.events = dict()
         for link in self.html.find_all('a'):
             evtName = link.string.strip()
-            self.events[evtName] = Event(link.get('href'), link.string.strip())
+            self.events[evtName] = Event(link.get('href'), evtName)
     
     def __repr__(self):
         compStr = ''
@@ -35,6 +35,7 @@ class Event(object):
     smoothDances = ['V. Waltz', 'Tango', 'Foxtrot', 'Waltz']
     latinDances = set(['Cha Cha', 'Rumba', 'Jive', 'Samba', 'Paso Doble'])
     rhythmDances = set(['Cha Cha', 'Rumba', 'Swing','Mambo', 'Bolero'])
+    levels = set(['Newcomer', 'Bronze', 'Silver', 'Gold'])
 
     def __init__(self, url, eventName):
         starttime = time.time()
@@ -44,47 +45,47 @@ class Event(object):
         self.eventSoup = BeautifulSoup(content, features='html.parser')
 
         self.style = ''
-        self.place = ''
-        self.dance = ''
+        self.place = 0
+        self.dance = []
         self.rounds = 0
+        self.level = ''
+        self.YCNPoints = 0
         
         self.getStyleAndDance()
-        self.getDance()
         self.getRounds()
         self.getPlace()
+        self.getLevel()
+        self.getYCNPoints()
         
         endtime = time.time()
 
         print(f'done event: {self.eventName} ' + "%6.3fs" % (endtime - starttime))
 
     def getStyleAndDance(self):
-
-        print(self.eventName)
         if 'Am.' in self.eventName:
 
             for dance in Event.smoothDances:
-                print(True, dance)
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Smooth'
                     break
 
             for dance in Event.rhythmDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Rhythm'
                     break
 
         elif 'Intl.' in self.eventName:
             for dance in Event.stdDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Standard'
                     break
 
             for dance in Event.latinDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Latin'
                     break
         
@@ -100,12 +101,39 @@ class Event(object):
         elif 'Rhythm' in self.eventName:
             self.style = 'Rhythm'
         
+        if self.dance == []:
+            self.getDanceFromEventPage()
+        
         # print(self.dance, self.style)
         
 
     
-    def getDance(self):
-        pass
+    def getDanceFromEventPage(self):
+        dances = self.eventSoup.find_all('td', attrs={'class':'h3'})[0:-1]
+        for dance in dances:
+            dance = str(dance)
+            if self.style == 'Standard':
+                for danceName in Event.stdDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Smooth':
+                for danceName in Event.smoothDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Latin':
+                for danceName in Event.latinDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Rhythm':
+                for danceName in Event.rhythmDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+
+    def getLevel(self):
+        for level in Event.levels:
+            if level in self.eventName:
+                self.level = level
+            
 
     def getRounds(self):
      
@@ -119,22 +147,43 @@ class Event(object):
     
     def getPlace(self):
         endIndex = self.eventName.find(')')
-        self.place = self.eventName[0:endIndex]
+        self.place = int(self.eventName[0:endIndex])
+    
+    def getYCNPoints(self):
+        if self.rounds == 2:
+            if self.place <= 3:
+                self.YCNPoints = 4-self.place
+        elif self.rounds > 2:
+            if self.place <= 3:
+                self.YCNPoints = 4-self.place
+            elif self.place > 3 and self.place <= 6:
+                self.YCNPoints = 1
+        else:
+            self.YCNPoints = 0    
+
+    
+    def getDCDIPoints(self):
+        pass
         
 
     def __repr__(self):
-        eventStr = f'Event Name: {self.eventName} \n'
-        eventStr += f'\tURL: {self.url}'
-        eventStr += f'\tStyle: {self.style}'
-        eventStr += f'\tDance: {self.dance}'
-        eventStr += f'\tRounds: {self.rounds}'
-        eventStr += f'\tPlace: {self.place}'
+        eventStr = f'Event Name: {self.eventName}'
+        eventStr += f'\n\tURL: {self.url}'
+        eventStr += f'\n\tLevel: {self.level}'
+        eventStr += f'\n\tStyle: {self.style}'
+        eventStr += f'\n\tDance: {self.dance}'
+        eventStr += f'\n\tRounds: {self.rounds}'
+        eventStr += f'\n\tPlace: {self.place}'
+        eventStr += f'\n\tPoints: {self.YCNPoints}'
         return eventStr
 
 def testProgram():
 
     firstName  = input('Enter Competetor First Name: ')
     lastName  = input('Enter Competetor Last Name: ')
+
+    firstName = 'austin'
+    lastName = 'lin'
 
     resultsURL = f'http://results.o2cm.com/individual.asp?szLast={lastName}&szFirst={firstName}'
 
@@ -165,7 +214,3 @@ testProgram()
 
 
 
-# {'10-26-19 - Keystone Dancesport Classic': {'12) Amateur Collegiate Bronze Am. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322838, '21) Amateur Collegiate Bronze Am. Cha Cha': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322848, '20) Amateur Collegiate Bronze Am. Rumba': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322849, '24) Amateur Collegiate Bronze Am. Swing': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032284A, '10) Amateur Collegiate Bronze Am. Mambo': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032284C, '12) Amateur Collegiate Bronze Am. Foxtrot': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032283A, '15) Amateur Collegiate Silver Standard': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323010, '14) Amateur Collegiate Silver Standard': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323011, '7) Amateur Collegiate Silver Smooth': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323030, '3) Amateur Collegiate Silver Smooth': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323031, '3) Amateur Collegiate Bronze Am. V. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032283B, '3) Amateur Collegiate Bronze Am. Tango': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322839, '8) Amateur Collegiate Bronze Intl. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322818, '7) Amateur Collegiate Bronze Intl. Foxtrot': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032281B, '8) Amateur Collegiate Bronze Intl. Tango': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322819, '6) Amateur Collegiate Bronze Intl. Quickstep': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032281C}}
-# {'10-26-19 - Keystone Dancesport Classic': Competition Name 10-26-19 - Keystone Dancesport Classic: 
-# {'12) Amateur Collegiate Bronze Am. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322838, '21) Amateur Collegiate Bronze Am. Cha Cha': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322848, '20) Amateur Collegiate Bronze Am. Rumba': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322849, '24) Amateur Collegiate Bronze Am. Swing': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032284A, '10) Amateur Collegiate Bronze Am. Mambo': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032284C, '12) Amateur Collegiate Bronze Am. Foxtrot': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032283A, '15) Amateur Collegiate Silver Standard': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323010, '14) Amateur Collegiate Silver Standard': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323011, '7) Amateur Collegiate Silver Smooth': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323030, '3) Amateur Collegiate Silver Smooth': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40323031, '3) Amateur Collegiate Bronze Am. V. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032283B, '3) Amateur Collegiate Bronze Am. 
-# Tango': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322839, '8) Amateur Collegiate Bronze Intl. Waltz': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322818, '7) Amateur Collegiate Bronze Intl. Foxtrot': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032281B, '8) Amateur Collegiate Bronze Intl. Tango': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=40322819, '6) Amateur Collegiate Bronze Intl. Quickstep': http://results.o2cm.com/scoresheet3.asp?event=kdc19b&heatid=4032281C}}      
