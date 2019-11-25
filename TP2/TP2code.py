@@ -17,7 +17,7 @@ class Competition(object):
         self.events = dict()
         for link in self.html.find_all('a'):
             evtName = link.string.strip()
-            self.events[evtName] = Event(link.get('href'), link.string.strip())
+            self.events[evtName] = Event(link.get('href'), evtName)
     
     def __repr__(self):
         compStr = ''
@@ -46,12 +46,11 @@ class Event(object):
 
         self.style = ''
         self.place = ''
-        self.dance = ''
+        self.dance = []
         self.rounds = 0
         self.level = ''
         
         self.getStyleAndDance()
-        self.getDance()
         self.getRounds()
         self.getPlace()
         self.getLevel()
@@ -65,26 +64,26 @@ class Event(object):
 
             for dance in Event.smoothDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Smooth'
                     break
 
             for dance in Event.rhythmDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Rhythm'
                     break
 
         elif 'Intl.' in self.eventName:
             for dance in Event.stdDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Standard'
                     break
 
             for dance in Event.latinDances:
                 if dance in self.eventName:
-                    self.dance = dance
+                    self.dance = [dance]
                     self.style = 'Latin'
                     break
         
@@ -100,19 +99,39 @@ class Event(object):
         elif 'Rhythm' in self.eventName:
             self.style = 'Rhythm'
         
+        if self.dance == []:
+            self.getDanceFromEventPage()
+        
         # print(self.dance, self.style)
         
 
     
-    def getDance(self):
-        pass
+    def getDanceFromEventPage(self):
+        dances = self.eventSoup.find_all('td', attrs={'class':'h3'})[0:-1]
+        for dance in dances:
+            dance = str(dance)
+            if self.style == 'Standard':
+                for danceName in Event.stdDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Smooth':
+                for danceName in Event.smoothDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Latin':
+                for danceName in Event.latinDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
+            elif self.style == 'Rhythm':
+                for danceName in Event.rhythmDances:
+                    if danceName in dance:
+                        self.dance += [danceName]
 
     def getLevel(self):
         for level in Event.levels:
             if level in self.eventName:
                 self.level = level
-            else:
-                self.level = None
+            
 
     def getRounds(self):
      
