@@ -45,15 +45,17 @@ class Event(object):
         self.eventSoup = BeautifulSoup(content, features='html.parser')
 
         self.style = ''
-        self.place = ''
+        self.place = 0
         self.dance = []
         self.rounds = 0
         self.level = ''
+        self.YCNPoints = 0
         
         self.getStyleAndDance()
         self.getRounds()
         self.getPlace()
         self.getLevel()
+        self.getYCNPoints()
         
         endtime = time.time()
 
@@ -145,7 +147,23 @@ class Event(object):
     
     def getPlace(self):
         endIndex = self.eventName.find(')')
-        self.place = self.eventName[0:endIndex]
+        self.place = int(self.eventName[0:endIndex])
+    
+    def getYCNPoints(self):
+        if self.rounds == 2:
+            if self.place <= 3:
+                self.YCNPoints = 4-self.place
+        elif self.rounds > 2:
+            if self.place <= 3:
+                self.YCNPoints = 4-self.place
+            elif self.place > 3 and self.place <= 6:
+                self.YCNPoints = 1
+        else:
+            self.YCNPoints = 0    
+
+    
+    def getDCDIPoints(self):
+        pass
         
 
     def __repr__(self):
@@ -156,6 +174,7 @@ class Event(object):
         eventStr += f'\n\tDance: {self.dance}'
         eventStr += f'\n\tRounds: {self.rounds}'
         eventStr += f'\n\tPlace: {self.place}'
+        eventStr += f'\n\tPoints: {self.YCNPoints}'
         return eventStr
 
 def testProgram():
