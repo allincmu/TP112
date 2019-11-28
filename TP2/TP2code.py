@@ -69,8 +69,6 @@ class Event(object):
         
         endtime = time.time()
 
-        # print(f'done event: {self.eventName} ' + "%6.3fs" % (endtime - starttime))
-
     def getStyleAndDance(self):
         if 'Am.' in self.eventName:
             for dance in Event.smoothDances:
@@ -169,7 +167,7 @@ class Event(object):
         else:
             self.YCNPoints = 0    
 
-    
+    # might implement later
     def getDCDIPoints(self):
         pass
         
@@ -184,7 +182,7 @@ class Event(object):
         eventStr += f'\n\tPlace: {self.place}'
         eventStr += f'\n\tPoints: {self.YCNPoints}'
         return eventStr
-        
+
 class Person(object):
     def __init__(self, firstName, lastName):
         self.firstName = firstName
@@ -193,18 +191,18 @@ class Person(object):
                            f'szLast={lastName}&szFirst={firstName}')
         self.eventsByLevel = {'Gold':[], 'Silver':[], 'Bronze':[], 'Newcomer':[]}
         self.getCompetitions()
-        self.YCNTotals = {'Newcomer':0, 'Bronze':0, 'Silver':0, 'Gold':0}
         self.newcomerYCNs = dict()
         self.bronzeYCNs = dict()
         self.silverYCNs = dict()
         self.goldYCNs = dict()
         self.ycnDict = dict()
-        self.createycnDict(self.newcomerYCNs)
-        self.createycnDict(self.bronzeYCNs)
-        self.createycnDict(self.silverYCNs)
-        self.createycnDict(self.goldYCNs)
+        self.createYCNDict(self.newcomerYCNs)
+        self.createYCNDict(self.bronzeYCNs)
+        self.createYCNDict(self.silverYCNs)
+        self.createYCNDict(self.goldYCNs)
 
         self.getYCNPoints()
+        print(self.ycnDict)
         
         
     
@@ -230,7 +228,7 @@ class Person(object):
             compHTML = self.resultsPageHTML[startIndex:endIndex]
             self.competitionList.append(Competition(compHTML, compName, self))
     
-    def createycnDict(self, d):
+    def createYCNDict(YCNf, d):
         d['Latin'] = dict()
         d['Rhythm'] = dict()
         d['Standard'] = dict()
@@ -254,19 +252,12 @@ class Person(object):
         self.getGoldYCN()
         self.getSilverYCN()
         self.getBronzeYCN()
-        self.getnewcomerYCN()
-        
-        print(self.newcomerYCNs)
-        print(self.bronzeYCNs)
-        print(self.silverYCNs)
-        print(self.goldYCNs)
+        self.getNewcomerYCN()
 
         self.ycnDict['Newcomer'] = self.newcomerYCNs
         self.ycnDict['Bronze'] = self.bronzeYCNs
         self.ycnDict['Silver'] = self.silverYCNs
-        self.ycnDict['Gold'] = self.goldYCNs
-        print(self.ycnDict)
-  
+        self.ycnDict['Gold'] = self.goldYCNs  
     
     def getGoldYCN(self):
         for goldEvent in self.eventsByLevel['Gold']:          
@@ -305,7 +296,7 @@ class Person(object):
                 self.silverYCNs[style]['Total'] += silverEvent.YCNPoints
                 
 
-    
+
     def getBronzeYCN(self):
         for style in self.silverYCNs:
             for dance in self.silverYCNs[style]:
@@ -327,28 +318,7 @@ class Person(object):
                 
                 self.bronzeYCNs[style]['Total'] += bronzeEvent.YCNPoints
     
-    def getBronzeYCN(self):
-        for style in self.silverYCNs:
-            for dance in self.silverYCNs[style]:
-                self.silverYCNs[style][dance]
-                self.bronzeYCNs[style][dance] = self.silverYCNs[style][dance]*2
-
-        for bronzeEvent in self.eventsByLevel['Bronze']:
-            
-            for dance in bronzeEvent.dance:
-                style = bronzeEvent.style
-                if style not in self.bronzeYCNs:
-                    self.bronzeYCNs[style] = dict()
-                    self.bronzeYCNs[style]['Total'] = 0
-
-                if dance in self.bronzeYCNs[style]:
-                    self.bronzeYCNs[style][dance] += bronzeEvent.YCNPoints
-                else:
-                    self.bronzeYCNs[style][dance] = bronzeEvent.YCNPoints
-                
-                self.bronzeYCNs[style]['Total'] += bronzeEvent.YCNPoints
-    
-    def getnewcomerYCN(self):
+    def getNewcomerYCN(self):
         for style in self.bronzeYCNs:
             for dance in self.bronzeYCNs[style]:
                 self.bronzeYCNs[style][dance]
@@ -386,21 +356,7 @@ class ElizabethCarpenter(object):
         self.ycnDict['Silver'] = self.silverYCNs
         self.ycnDict['Gold'] = self.goldYCNS
   
-# def testProgram():
-#     print('The default competetor is:')
-#     print('\t First Name: Arthur \n\t Last Name: Barelli')
-
-#     choice = input('Use default? (y/n) ')
-#     if choice == 'y':
-#         firstName = 'Arthur'
-#         lastName = 'Barelli'
-#     else:
-#         firstName  = input('Enter Competetor First Name: ')
-#         lastName  = input('Enter Competetor Last Name: ')
-    
-#     Competetor = Person(firstName, lastName)
-
-    
+ 
 
 class SplashScreenMode(Mode):
     def appStarted(mode):
@@ -419,7 +375,8 @@ class SplashScreenMode(Mode):
 
     def keyPressed(mode, event):
         if event.key == 'Tab':
-            mode.app.setActiveMode(mode.app.createEC)
+            mode.app.setActiveMode(mode.app.testUsingEC)
+            return
 
         firstName = mode.app.getUserInput("Competetor's First Name: ")
         if (firstName == None):
@@ -438,12 +395,12 @@ class SplashScreenMode(Mode):
     def timerFired(mode):
         if mode.competetorSet == True:
             mode.app.competetor = Person(mode.firstName, mode.lastName)
-            mode.app.setActiveMode(mode.app.ycnMode)
+            mode.app.setActiveMode(mode.app.menuMode)
 
 class YCNMode(Mode): 
     def appStarted(mode):
-        mode.app.rows = 28
-        mode.app.cols = 6
+        mode.rows = 28
+        mode.cols = 6
         mode.app.margin = 50
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
@@ -460,33 +417,16 @@ class YCNMode(Mode):
         mode.styleAndDanceDict['Latin'] = latinDances
         
         mode.dances = smoothDances + stdDances + rhythmDances + latinDances
-
-    # # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
-    # def pointInGrid(app, x, y):
-    #     # return True if (x, y) is inside the grid defined by app.
-    #     return ((mode.mode.app.margin <= x <= mode.mode.app.width-mode.app.margin) and
-    #             (mode.mode.app.margin <= y <= mode.mode.app.height-mode.app.margin))
-
-    # # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
-    # def getCell(app, x, y):
-    #     if (not pointInGrid(app, x, y)):
-    #         return (-1, -1)
-    #     gridWidth  = mode.app.width - 2*mode.app.margin
-    #     gridHeight = mode.app.height - 2*mode.app.margin
-    #     cellWidth  = gridWidth / app.cols
-    #     cellHeight = gridHeight / app.rows
-
-    #     row = int((y - mode.app.margin) / cellHeight)
-    #     col = int((x - mode.app.margin) / cellWidth)
-
-    #     return (row, col)
+    
+    def keyPressed(mode, event):
+        mode.app.setActiveMode(mode.app.menuMode)
 
     # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
     def getCellBounds(mode, row, col):
         gridWidth  = mode.app.width - 2*mode.app.margin
         gridHeight = mode.app.height - 2*mode.app.margin
-        columnWidth = gridWidth / mode.app.cols
-        rowHeight = gridHeight / mode.app.rows
+        columnWidth = gridWidth / mode.cols
+        rowHeight = gridHeight / mode.rows
         x0 = mode.app.margin + col * columnWidth
         x1 = mode.app.margin + (col+1) * columnWidth
         y0 = mode.app.margin + row * rowHeight
@@ -494,23 +434,23 @@ class YCNMode(Mode):
         return (x0, y0, x1, y1)
 
     def redrawAll(mode, canvas):
-        # draw grid of cells
         canvas.create_text(mode.app.width/2, mode.app.margin/2, 
                            text = 'YCN Points Tally', font = 'Arial 25 bold')
 
         text = ('Totals in Red indicate that a dancer has pointed out of ' +
                 'that style and level. Empty cells indicate that no points '+
-                'have been earned.')
+                'have been earned.\n')
+        text += 'Press any key to return to the Main Menu'
         canvas.create_text(mode.app.width/2, 
                            mode.app.height - mode.app.margin/2, 
                            text = text, fill = 'red')
 
-        for row in range(mode.app.rows):
+        for row in range(mode.rows):
             if row in [1, 7, 14, 21]: continue
             
             if row == 0: fill = 'light blue'
             else: fill = None
-            for col in range(mode.app.cols):
+            for col in range(mode.cols):
                 (x0, y0, x1, y1) = mode.getCellBounds(row, col)
                 canvas.create_rectangle(x0, y0, x1, y1, fill = fill)
         mode.drawTableHeader(canvas)
@@ -524,7 +464,7 @@ class YCNMode(Mode):
         yheaders = [('Smooth', 2), ('Standard', 8), 
                    ('Rhythm', 15), ('Latin', 22)]
         font = 'Bold'
-        for col in range(mode.app.cols):
+        for col in range(mode.cols):
             row = 0
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             canvas.create_text(x1+(x0-x1)/2, y1+(y0-y1)/2, 
@@ -539,7 +479,7 @@ class YCNMode(Mode):
     def drawDances(mode, canvas):
         col = 1
         startRow = 1
-        for row in range(startRow, mode.app.rows):
+        for row in range(startRow, mode.rows):
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             text = mode.dances[row-1]
             font = 'Arial 10'
@@ -573,39 +513,138 @@ class YCNMode(Mode):
                     row += 1
             col += 1
             row = 1
-                
-        
 
-class CreateEC(Mode):
-    def appStarted(mode):
-        mode.app.competetor = ElizabethCarpenter(mode)
-        mode.app.setActiveMode(mode.app.ycnMode)
-        
-
-
-
-        
-
-class HelpMode(Mode):
-    def redrawAll(mode, canvas):
-        font = 'Arial 26 bold'
-        canvas.create_text(mode.width/2, 150, text='This is the help screen!', font=font)
-        canvas.create_text(mode.width/2, 250, text='(Insert helpful message here)', font=font)
-        canvas.create_text(mode.width/2, 350, text='Press any key to return to the game!', font=font)
+class YCNModeCondensed(Mode): 
 
     def keyPressed(mode, event):
-        mode.app.setActiveMode(mode.app.gameMode)
+        mode.app.setActiveMode(mode.app.menuMode)
 
-class MyModalApp(ModalApp):
+    def appStarted(mode):
+        mode.rows = 5
+        mode.cols = 5
+        mode.app.margin = 50
+
+        mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
+
+    # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
+    def getCellBounds(mode, row, col):
+        gridWidth  = mode.app.width - 2*mode.app.margin
+        gridHeight = mode.app.height - 2*mode.app.margin
+        columnWidth = gridWidth / mode.cols
+        rowHeight = gridHeight / mode.rows
+        x0 = mode.app.margin + col * columnWidth
+        x1 = mode.app.margin + (col+1) * columnWidth
+        y0 = mode.app.margin + row * rowHeight
+        y1 = mode.app.margin + (row+1) * rowHeight
+        return (x0, y0, x1, y1)
+
+    def redrawAll(mode, canvas):
+        canvas.create_text(mode.app.width/2, mode.app.margin/2, 
+                           text = 'YCN Points Tally (Condensed)', 
+                           font = 'Arial 25 bold')
+
+        text = ('Totals in Red indicate that a dancer has pointed out of ' +
+                'that style and level. Empty cells indicate that no points '+
+                'have been earned.\n')
+        text += 'Press any key to return to the Main Menu'
+        canvas.create_text(mode.app.width/2, 
+                           mode.app.height - mode.app.margin/2, 
+                           text = text, fill = 'red')
+
+        for row in range(mode.rows):            
+            if row == 0: fill = 'light blue'
+            else: fill = None
+            for col in range(mode.cols):
+                (x0, y0, x1, y1) = mode.getCellBounds(row, col)
+                canvas.create_rectangle(x0, y0, x1, y1, fill = fill)
+        mode.drawTableHeader(canvas)
+        mode.addYCNPoints(canvas)
+        
+    
+    def drawTableHeader(mode, canvas):
+       
+        xheaders = ['Style', 'Newcomer', 'Bronze', 'Silver', 'Gold']
+        yheaders = ['Smooth', 'Standard', 'Rhythm', 'Latin']
+        font = 'Bold'
+        for col in range(mode.cols):
+            row = 0
+            (x0, y0, x1, y1) = mode.getCellBounds(row, col)
+            canvas.create_text(x1+(x0-x1)/2, y1+(y0-y1)/2, 
+                               text = xheaders[col], font = font)
+        
+        for row in range(1, mode.rows):
+            col = 0
+            style = yheaders[row-1]
+            (x0, y0, x1, y1) = mode.getCellBounds(row, col)
+            canvas.create_text(x1+(x0-x1)/2, y1+(y0-y1)/2, 
+                               text = style, font = font)
+    
+    
+    def addYCNPoints(mode, canvas):
+        levelOrder = ['Newcomer', 'Bronze', 'Silver', 'Gold']
+        col = 1
+        row = 1
+        for level in levelOrder:
+            for style in mode.styleOrder:
+                points = mode.app.competetor.ycnDict[level][style]['Total']
+                if points != 0:
+                    fill = 'black'
+                    font = 'Arial 20 bold'
+                    if points >= 7: fill = 'red'
+                    (x0, y0, x1, y1) = mode.getCellBounds(row, col)
+                    canvas.create_text(x1+(x0-x1)/2, y1+(y0-y1)/2, 
+                                        text = points, font = font, 
+                                        fill = fill)
+                row += 1
+            col += 1
+            row = 1
+
+                
+class testUsingEC(Mode):
+    def appStarted(mode):
+        mode.app.competetor = ElizabethCarpenter(mode)
+        mode.app.setActiveMode(mode.app.menuMode)
+
+class MenuMode(Mode):
+    def keyPressed(mode, event):
+        if event.key == '1':
+            mode.app.setActiveMode(mode.app.splashScreenMode)
+        elif event.key == '2':
+            mode.app.setActiveMode(mode.app.ycnMode)
+        elif event.key == '3':
+            mode.app.setActiveMode(mode.app.ycnModeCondensed)
+        # More will be added later
+    
+    def redrawAll(mode, canvas):
+        menuText = '\t\tMenu \n\n'
+        menuText += 'Press 1 - To return to the start screen\n'
+        menuText += 'Press 2 - To view to the YCN points chart (expanded)\n'
+        menuText += 'Press 3 - To view to the YCN points chart (condensed)\n'
+        menuText += 'Press 4 - To view to the Recall Rate Graph\n'
+        menuText += 'Press 5 - To view to the Competetive Summary\n'
+        menuText += 'Press 6 - To view to the Raw Results\n'
+        
+        canvas.create_text(mode.app.width/2, mode.app.height/2, 
+                           text = menuText, font = 'Arial 20')
+        
+
+        
+
+
+        
+# From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+# With slight edits
+class O2CMApp(ModalApp):
     def appStarted(app):
         app.splashScreenMode = SplashScreenMode()
         app.ycnMode = YCNMode()
-        app.createEC = CreateEC()
-        app.helpMode = HelpMode()
+        app.ycnModeCondensed = YCNModeCondensed()
+        app.testUsingEC = testUsingEC()
+        app.menuMode = MenuMode()
         app.setActiveMode(app.splashScreenMode)
         app.timerDelay = 50
 
-app = MyModalApp(width=1000, height=650)
+app = O2CMApp(width=1000, height=650)
 
 
 
