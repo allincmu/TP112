@@ -2,10 +2,8 @@ from bs4 import BeautifulSoup
 import urllib.request
 import requests
 from mechanize import Browser
+import time
 
-# Helper function for print2dList.
-# This finds the maximum length of the string
-# representation of any item in the 2d list
 def maxItemLength(a):
     maxLen = 0
     rows = len(a)
@@ -72,12 +70,8 @@ def getResultsTable(url, i):
     
     
     table = soup.find('table', attrs={'class':'t1n'})
-    # tables = soup.find_all('table', attrs={'class':'t1n'})
-
-    # for table in tables:
-    #     print(table)
-
     
+
     rows = table.find_all('tr')
     for row in rows:
         cols = row.find_all('td')
@@ -86,7 +80,7 @@ def getResultsTable(url, i):
     print()
     print(getRoundName(i))
 
-    print2dList(data, False)
+    # print2dList(data, False)
     
 
 
@@ -131,8 +125,11 @@ for event in events:
     
     print('\tNumber of rounds: ', rounds)
 
+    start = time.time()
     for i in range(1, rounds):
         getResultsTable(url, i)
+    end = time.time()
+    print(end-start)
 
 
     print()

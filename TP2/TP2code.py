@@ -9,31 +9,39 @@ import urllib.request, time, random
 class Competition(object):
 
     competitions = dict()
-    def __init__(self, html, name, Person):
+    def __init__(self, html, name, Dancer):
+        starttime = time.time()
         self.name = name
         self.html = BeautifulSoup(html, features='html.parser')
-        self.getEvents(html, Person)
+        self.getEvents(html, Dancer)
         self.number = None
         Competition.competitions[self.name] = self
-        print('done comp')
+        # self.getJudgeNumbers()
+        endtime = time.time()
+        print('done comp ', endtime-starttime)
     
-    def getEvents(self, html, Person):
+    def getEvents(self, html, Dancer):
         self.eventsURL = dict()
         for link in self.html.find_all('a'):
             evtName = link.string.strip()
             event = Event(link.get('href'), evtName)
             self.eventsURL[evtName] = event
-            if event.level in Person.eventsByLevel:
-                Person.eventsByLevel[event.level].append(event)
+            if event.level in Dancer.eventsByLevel:
+                Dancer.eventsByLevel[event.level].append(event)
             else:
-                Person.eventsByLevel[event.level] = [event]
+                Dancer.eventsByLevel[event.level] = [event]
+    
+    # def getJudgeNumbers(self):
+    #     for event in eventsURL:
+    #         eventLink = eventsURL[event]
+
             
     
     def __repr__(self):
         compStr = ''
         for Event in self.eventsURL:
             compStr += (str(self.eventsURL[Event]) + '\n')
-        return compStr
+        return self.name
 
 
     def addEvent(self, Event):
@@ -60,14 +68,91 @@ class Event(object):
         self.rounds = 0
         self.level = ''
         self.YCNPoints = 0
+        self.resultsTables = dict()
         
         self.getStyleAndDance()
         self.getRounds()
         self.getPlace()
         self.getLevel()
         self.getYCNPoints()
+
+        # self.getResultsTables()
         
         endtime = time.time()
+   
+    
+    def getRoundName(self, i):
+        roundNames = ['Final', 'Semi-Final', 'Quarter-Final']
+        if i <= 2:
+            return roundNames[i]
+        else:
+            deno = 2**i
+            return "1/" + str(deno) + "-Final"
+
+    def getResultsTables(self):
+        starttime = time.time()
+        for i in range(1, self.rounds):
+            roundName = self.getRoundName(i)
+            resultTable = self.getResultTable(i)
+            self.resultsTables[roundName] = resultTable
+        endtime = time.time()
+        print('done results tables ', endtime-starttime)
+        print(self.resultsTables)
+        
+    def getResultTable(self, i):
+        br = Browser()
+        br.addheaders = [('User-agent', 'Firefox')]
+        br.open(self.url)
+        if i != None:
+            br.select_form(name="selectRound")
+            br['selCount'] = [str(i)]
+            br.submit()
+        else:
+            i = 0
+        soup = BeautifulSoup(br.response().read(), features='html.parser')
+        
+        # From: https://stackoverflow.com/questions/23377533/ +
+        #       python-beautifulsoup-parsing-table
+        data = []
+        table = soup.find('table', attrs={'class':'t1n'})
+        rows = table.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            cols = [ele.text.strip() for ele in cols]
+            data.append([ele for ele in cols])
+        
+        return data
+    
+    # # From ___________________________________________________________________________________________________
+    # # With slight edits
+    # def print2dList(self, a, compact = False, number = 120):
+    #     foundNum = False
+    #     a.pop(0)
+    #     if (a == []):
+    #         # So we don't crash accessing a[0]
+    #         print([])
+    #         return
+    #     rows = len(a)
+    #     cols = len(a[0])
+    #     fieldWidth = maxItemLength(a)
+    #     print("[ ", end="")
+    #     for row in range(rows):
+    #         if (row > 0):
+    #             if compact == True:
+    #                 if a[row][0] != str(number): 
+    #                     foundNum = True
+    #                     continue
+    #             print("\n  ", end="")
+    #         print("[ ", end="")
+    #         for col in range(cols):
+    #             if (col > 0): print(", ", end="")
+    #             # The next 2 lines print a[row][col] with the given fieldWidth
+    #             formatSpec = "%" + str(fieldWidth) + "s"
+    #             print(formatSpec % str(a[row][col]), end="")
+    #         print(" ]", end="")
+    #         if foundNum == True:
+    #             break
+    #     print("]")
 
     def getStyleAndDance(self):
         if 'Am.' in self.eventName:
@@ -142,7 +227,6 @@ class Event(object):
             
 
     def getRounds(self):
-     
         self.rounds = len(self.eventHTML.find_all('option'))
         if self.rounds == 0:
             self.rounds = 1
@@ -181,9 +265,9 @@ class Event(object):
         eventStr += f'\n\tRounds: {self.rounds}'
         eventStr += f'\n\tPlace: {self.place}'
         eventStr += f'\n\tPoints: {self.YCNPoints}'
-        return eventStr
+        return self.eventName
 
-class Person(object):
+class Dancer(object):
     def __init__(self, firstName, lastName):
         self.firstName = firstName
         self.lastName = lastName
@@ -228,7 +312,7 @@ class Person(object):
             compHTML = self.resultsPageHTML[startIndex:endIndex]
             self.competitionList.append(Competition(compHTML, compName, self))
     
-    def createYCNDict(YCNf, d):
+    def createYCNDict(self, d):
         d['Latin'] = dict()
         d['Rhythm'] = dict()
         d['Standard'] = dict()
@@ -339,62 +423,61 @@ class Person(object):
                 
                 self.newcomerYCNs[style]['Total'] += newcomerEvent.YCNPoints
 
-class ElizabethCarpenter(object):
+class ElliottToy(object):
     def __init__(self, mode):
-        self.newcomerYCNs = {'Latin': {'Total': 49, 'Paso Doble': 0, 'Samba': 14, 'Jive': 12, 'Rumba': 12, 'Cha Cha': 11}, 'Rhythm': {'Total': 10, 'Rumba': 4, 'Bolero': 0, 
-'Mambo': 2, 'Cha Cha': 2, 'Swing': 2}, 'Standard': {'Total': 20, 'V. Waltz': 0, 'Tango': 4, 'Foxtrot': 4, 'Quickstep': 6, 'Waltz': 6}, 'Smooth': {'Total': 28, 'V. Waltz': 6, 'Tango': 8, 'Foxtrot': 8, 'Waltz': 6}}    
-        self.bronzeYCNs = {'Latin': {'Total': 24, 'Paso Doble': 0, 'Samba': 7, 'Jive': 6, 'Rumba': 6, 'Cha Cha': 5}, 'Rhythm': {'Total': 5, 'Rumba': 2, 'Bolero': 0, 'Mambo': 1, 'Cha Cha': 1, 'Swing': 1}, 'Standard': {'Total': 10, 'V. Waltz': 
-0, 'Tango': 2, 'Foxtrot': 2, 'Quickstep': 3, 'Waltz': 3}, 'Smooth': {'Total': 14, 'V. Waltz': 3, 'Tango': 4, 'Foxtrot': 4, 'Waltz': 3}}
-
-        self.silverYCNs = {'Latin': {'Total': 6, 'Paso Doble': 0, 'Samba': 2, 'Jive': 2, 'Rumba': 
-1, 'Cha Cha': 1}, 'Rhythm': {'Total': 0, 'Rumba': 0, 'Bolero': 0, 'Mambo': 0, 'Cha Cha': 0, 'Swing': 0}, 'Standard': {'Total': 0, 'V. Waltz': 0, 'Tango': 0, 'Foxtrot': 0, 'Quickstep': 0, 'Waltz': 0}, 'Smooth': {'Total': 0, 'V. Waltz': 0, 'Tango': 0, 'Foxtrot': 0, 'Waltz': 0}}
-        self.goldYCNS = {'Latin': {'Total': 0, 'Paso Doble': 0, 'Samba': 0, 'Jive': 0, 'Rumba': 
-0, 'Cha Cha': 0}, 'Rhythm': {'Total': 0, 'Rumba': 0, 'Bolero': 0, 'Mambo': 0, 'Cha Cha': 0, 'Swing': 0}, 'Standard': {'Total': 0, 'V. Waltz': 0, 'Tango': 0, 'Foxtrot': 0, 'Quickstep': 0, 'Waltz': 0}, 'Smooth': {'Total': 0, 'V. Waltz': 0, 'Tango': 0, 'Foxtrot': 0, 'Waltz': 0}}
-        self.ycnDict = dict()
-        self.ycnDict['Newcomer'] = self.newcomerYCNs
-        self.ycnDict['Bronze'] = self.bronzeYCNs
-        self.ycnDict['Silver'] = self.silverYCNs
-        self.ycnDict['Gold'] = self.goldYCNS
+        self.ycnDict = {'Newcomer': {'Latin': {'Total': 126, 'Samba': 30, 'Cha Cha': 38, 'Jive': 20, 'Rumba': 38, 'Paso Doble': 0}, 'Rhythm': {'Total': 22, 'Cha Cha': 7, 'Swing': 6, 'Bolero': 0, 'Rumba': 5, 'Mambo': 4}, 'Standard': {'Total': 222, 'V. Waltz': 0, 'Tango': 38, 'Foxtrot': 58, 'Quickstep': 74, 'Waltz': 52}, 'Smooth': {'Total': 122, 'V. Waltz': 2, 'Tango': 31, 'Foxtrot': 30, 'Waltz': 59}}, 'Bronze': {'Latin': {'Total': 63, 'Samba': 15, 'Cha Cha': 19, 'Jive': 10, 'Rumba': 19, 'Paso Doble': 0}, 'Rhythm': {'Total': 10, 'Cha Cha': 3, 'Swing': 3, 'Bolero': 0, 'Rumba': 2, 'Mambo': 2}, 'Standard': {'Total': 111, 'V. Waltz': 0, 'Tango': 19, 'Foxtrot': 29, 'Quickstep': 37, 'Waltz': 26}, 'Smooth': {'Total': 59, 'V. Waltz': 1, 'Tango': 14, 'Foxtrot': 15, 'Waltz': 29}}, 'Silver': {'Latin': {'Total': 23, 'Samba': 7, 'Cha Cha': 6, 'Jive': 4, 'Rumba': 6, 'Paso Doble': 0}, 'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0}, 'Standard': {'Total': 44, 'V. Waltz': 0, 'Tango': 8, 'Foxtrot': 13, 'Quickstep': 14, 'Waltz': 9}, 'Smooth': {'Total': 28, 'V. Waltz': 0, 'Tango': 7, 'Foxtrot': 7, 'Waltz': 14}}, 'Gold': {'Latin': {'Total': 4, 'Samba': 1, 'Cha Cha': 1, 'Jive': 1, 'Rumba': 
+                        1, 'Paso Doble': 0}, 'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0}, 'Standard': {'Total': 16, 'V. Waltz': 0, 'Tango': 3, 'Foxtrot': 5, 'Quickstep': 5, 'Waltz': 3}, 'Smooth': {'Total': 8, 'V. Waltz': 0, 'Tango': 2, 'Foxtrot': 2, 'Waltz': 4}}}
   
- 
-
 class SplashScreenMode(Mode):
     def appStarted(mode):
-        mode.msg = 'Press any key to enter a competetor!'
-        mode.competetorSet = False
+        mode.msg = 'Press any key to enter a dancer!'
+        mode.dancerSet = False
 
     def redrawAll(mode, canvas):
-        fontTitle = 'Arial 20 bold'
-        fontMsg = 'Arial 15 bold'
+        fontTitle = 'Arial 30 bold'
+        fontMsg = 'Arial 20 bold'
         canvas.create_text(mode.width/2, 150, 
                            text='Ballroom YCN Points Calculator', 
                            font=fontTitle)
-        canvas.create_text(mode.width/2, 180, text='and Statistics Program', 
+        canvas.create_text(mode.width/2, 190, text='and Statistics Program', 
                            font=fontTitle)
-        canvas.create_text(mode.width/2, 250, text=mode.msg, font=fontMsg)
+        canvas.create_text(mode.width/2, 300, text=mode.msg, font=fontMsg)
 
     def keyPressed(mode, event):
         if event.key == 'Tab':
-            mode.app.setActiveMode(mode.app.testUsingEC)
+            mode.app.setActiveMode(mode.app.testUsingET)
             return
 
-        firstName = mode.app.getUserInput("Competetor's First Name: ")
+        firstName = mode.app.getUserInput("Competitor's First Name: ")
         if (firstName == None):
             mode.app.showMessage = 'You canceled!'
         else:
-            lastName = mode.app.getUserInput("Competetor's Last Name: ")
+            lastName = mode.app.getUserInput("Competitor's Last Name: ")
             if (lastName == None):
                 mode.app.showMessage = 'You canceled!'
             else:
+                firstName = firstName.title()
+                lastName = lastName.title()
+                mode.name = firstName + ' ' + lastName
                 mode.msg = f'Pulling results for {firstName} {lastName}... \n'
                 mode.msg += 'Please Wait. This may take a few moments.'
-                mode.competetorSet = True
+                mode.dancerSet = True
                 mode.firstName = firstName
                 mode.lastName = lastName
 
+    def resetApp(mode):
+        Competition.competitions = None
+        mode.dancerSet = False
+        mode.msg = 'Press any key to enter a dancer!'            
+
     def timerFired(mode):
-        if mode.competetorSet == True:
-            mode.app.competetor = Person(mode.firstName, mode.lastName)
+        if mode.dancerSet == True:
+            mode.app.dancer = Dancer(mode.firstName, mode.lastName)
+            if mode.app.dancer.competitions == ['No Results on File']: 
+                mode.app.showMessage(f'No Results on O2CM for {mode.name}.\n' +
+                                      'Please re-enter dancer name.')
+                mode.resetApp()
+                return
             mode.app.setActiveMode(mode.app.menuMode)
 
 class YCNMode(Mode): 
@@ -499,7 +582,7 @@ class YCNMode(Mode):
                         row += 1
                         continue
 
-                    points = mode.app.competetor.ycnDict[level][style][dance]
+                    points = mode.app.dancer.ycnDict[level][style][dance]
                     if points != 0:
                         font = 'Arial 10'
                         fill = 'black'
@@ -586,7 +669,7 @@ class YCNModeCondensed(Mode):
         row = 1
         for level in levelOrder:
             for style in mode.styleOrder:
-                points = mode.app.competetor.ycnDict[level][style]['Total']
+                points = mode.app.dancer.ycnDict[level][style]['Total']
                 if points != 0:
                     fill = 'black'
                     font = 'Arial 20 bold'
@@ -598,21 +681,24 @@ class YCNModeCondensed(Mode):
                 row += 1
             col += 1
             row = 1
-
-                
-class testUsingEC(Mode):
+         
+class testUsingET(Mode):
     def appStarted(mode):
-        mode.app.competetor = ElizabethCarpenter(mode)
+        mode.app.dancer = ElliottToy(mode)
         mode.app.setActiveMode(mode.app.menuMode)
 
 class MenuMode(Mode):
     def keyPressed(mode, event):
         if event.key == '1':
+            mode.app.splashScreenMode.resetApp()
             mode.app.setActiveMode(mode.app.splashScreenMode)
         elif event.key == '2':
             mode.app.setActiveMode(mode.app.ycnMode)
         elif event.key == '3':
             mode.app.setActiveMode(mode.app.ycnModeCondensed)
+        elif event.key == '4':
+            mode.app.setActiveMode(mode.app.compPicker)
+
         # More will be added later
     
     def redrawAll(mode, canvas):
@@ -626,10 +712,32 @@ class MenuMode(Mode):
         
         canvas.create_text(mode.app.width/2, mode.app.height/2, 
                            text = menuText, font = 'Arial 20')
-        
 
-        
+class CompPicker(Mode):
+    def appStarted(mode):
+        mode.text = mode.getOptionsString()
+    def keyPressed(mode, event):
+        compIndex = event.key
+        numComps = mode.app.dancer.competitionList
+        if compIndex.isnumeric:
+            compIndex = int(compIndex)
+            if compIndex < len(numComps):
+                compSel = mode.app.dancer.competitionList[compIndex]
+                print(compSel)
 
+    def redrawAll(mode, canvas):
+        canvas.create_text(mode.app.width/2, mode.app.height/2, 
+                           text = mode.text
+                           )
+        pass
+    
+    def getOptionsString(mode):
+        optionsStr = ('Please enter the number of the competition to generate' + 
+                     'a recall rate graph: \n') 
+        for i in range(len(mode.app.dancer.competitionList)):
+            compName = str(mode.app.dancer.competitionList[i])
+            optionsStr += ('\tPress ' + str(i) + ':\t' + compName + '\n')
+        return optionsStr
 
         
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
@@ -639,8 +747,9 @@ class O2CMApp(ModalApp):
         app.splashScreenMode = SplashScreenMode()
         app.ycnMode = YCNMode()
         app.ycnModeCondensed = YCNModeCondensed()
-        app.testUsingEC = testUsingEC()
+        app.testUsingET = testUsingET()
         app.menuMode = MenuMode()
+        app.compPicker = CompPicker()
         app.setActiveMode(app.splashScreenMode)
         app.timerDelay = 50
 
