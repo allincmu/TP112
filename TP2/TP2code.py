@@ -716,6 +716,7 @@ class MenuMode(Mode):
 class CompPicker(Mode):
     def appStarted(mode):
         mode.text = mode.getOptionsString()
+        
     def keyPressed(mode, event):
         compIndex = event.key
         numComps = mode.app.dancer.competitionList
@@ -732,8 +733,8 @@ class CompPicker(Mode):
         pass
     
     def getOptionsString(mode):
-        optionsStr = ('Please enter the number of the competition to generate' + 
-                     'a recall rate graph: \n') 
+        optionsStr = ('Please enter the number of the competition to generate'+ 
+                      ' a recall rate graph: \n') 
         for i in range(len(mode.app.dancer.competitionList)):
             compName = str(mode.app.dancer.competitionList[i])
             optionsStr += ('\tPress ' + str(i) + ':\t' + compName + '\n')
