@@ -76,7 +76,7 @@ class Event(object):
         self.getLevel()
         self.getYCNPoints()
 
-        # self.getResultsTables()
+        self.getResultsTables()
         
         endtime = time.time()
    
@@ -427,7 +427,8 @@ class ElliottToy(object):
     def __init__(self, mode):
         self.ycnDict = {'Newcomer': {'Latin': {'Total': 126, 'Samba': 30, 'Cha Cha': 38, 'Jive': 20, 'Rumba': 38, 'Paso Doble': 0}, 'Rhythm': {'Total': 22, 'Cha Cha': 7, 'Swing': 6, 'Bolero': 0, 'Rumba': 5, 'Mambo': 4}, 'Standard': {'Total': 222, 'V. Waltz': 0, 'Tango': 38, 'Foxtrot': 58, 'Quickstep': 74, 'Waltz': 52}, 'Smooth': {'Total': 122, 'V. Waltz': 2, 'Tango': 31, 'Foxtrot': 30, 'Waltz': 59}}, 'Bronze': {'Latin': {'Total': 63, 'Samba': 15, 'Cha Cha': 19, 'Jive': 10, 'Rumba': 19, 'Paso Doble': 0}, 'Rhythm': {'Total': 10, 'Cha Cha': 3, 'Swing': 3, 'Bolero': 0, 'Rumba': 2, 'Mambo': 2}, 'Standard': {'Total': 111, 'V. Waltz': 0, 'Tango': 19, 'Foxtrot': 29, 'Quickstep': 37, 'Waltz': 26}, 'Smooth': {'Total': 59, 'V. Waltz': 1, 'Tango': 14, 'Foxtrot': 15, 'Waltz': 29}}, 'Silver': {'Latin': {'Total': 23, 'Samba': 7, 'Cha Cha': 6, 'Jive': 4, 'Rumba': 6, 'Paso Doble': 0}, 'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0}, 'Standard': {'Total': 44, 'V. Waltz': 0, 'Tango': 8, 'Foxtrot': 13, 'Quickstep': 14, 'Waltz': 9}, 'Smooth': {'Total': 28, 'V. Waltz': 0, 'Tango': 7, 'Foxtrot': 7, 'Waltz': 14}}, 'Gold': {'Latin': {'Total': 4, 'Samba': 1, 'Cha Cha': 1, 'Jive': 1, 'Rumba': 
                         1, 'Paso Doble': 0}, 'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0}, 'Standard': {'Total': 16, 'V. Waltz': 0, 'Tango': 3, 'Foxtrot': 5, 'Quickstep': 5, 'Waltz': 3}, 'Smooth': {'Total': 8, 'V. Waltz': 0, 'Tango': 2, 'Foxtrot': 2, 'Waltz': 4}}}
-  
+        self.competitionList = ['02-16-19 - The UPenn Classic', '10-26-19 - Keystone Dancesport Classic', '11-23-19 - OSB Collegiate Challenge 2019']
+
 class SplashScreenMode(Mode):
     def appStarted(mode):
         mode.msg = 'Press any key to enter a dancer!'
@@ -450,11 +451,11 @@ class SplashScreenMode(Mode):
 
         firstName = mode.app.getUserInput("Competitor's First Name: ")
         if (firstName == None):
-            mode.app.showMessage = 'You canceled!'
+            mode.app.showMessage('You canceled!')
         else:
             lastName = mode.app.getUserInput("Competitor's Last Name: ")
             if (lastName == None):
-                mode.app.showMessage = 'You canceled!'
+                mode.app.showMessage('You canceled!')
             else:
                 firstName = firstName.title()
                 lastName = lastName.title()
@@ -697,6 +698,7 @@ class MenuMode(Mode):
         elif event.key == '3':
             mode.app.setActiveMode(mode.app.ycnModeCondensed)
         elif event.key == '4':
+            # mode.app.compPicker.resetMode()
             mode.app.setActiveMode(mode.app.compPicker)
 
         # More will be added later
@@ -715,30 +717,57 @@ class MenuMode(Mode):
 
 class CompPicker(Mode):
     def appStarted(mode):
-        mode.text = mode.getOptionsString()
+        mode.resetMode()
+    
+    def resetMode(mode):
+        mode.compSelected = False
+        mode.getMsg()
+
+    def timerFired(mode):
+        mode.getMsg()
+        mode.app.dancer
         
     def keyPressed(mode, event):
         compIndex = event.key
         numComps = mode.app.dancer.competitionList
-        if compIndex.isnumeric:
-            compIndex = int(compIndex)
-            if compIndex < len(numComps):
-                compSel = mode.app.dancer.competitionList[compIndex]
-                print(compSel)
+        
+        if compIndex.isalpha():
+            mode.app.setActiveMode(mode.app.menuMode)
+
+        elif compIndex.isnumeric() and int(compIndex) < len(numComps):
+                compIndex = int(compIndex)
+                mode.compSelection = mode.app.dancer.competitionList[compIndex]
+                mode.compSelected = True
+
+        else:
+            mode.app.showMessage(f'Invalid Entry: \'{compIndex}\' \n' + 
+                                  'There is no competition associated with ' +
+                                  f'\'{compIndex}\'')
+        print(mode.compSelected)
+        
+
+        
+            
+            
+                
 
     def redrawAll(mode, canvas):
+        font = 'Arial 20'
         canvas.create_text(mode.app.width/2, mode.app.height/2, 
-                           text = mode.text
-                           )
-        pass
+                           text = mode.msg, font = font)
+        
     
-    def getOptionsString(mode):
-        optionsStr = ('Please enter the number of the competition to generate'+ 
-                      ' a recall rate graph: \n') 
-        for i in range(len(mode.app.dancer.competitionList)):
-            compName = str(mode.app.dancer.competitionList[i])
-            optionsStr += ('\tPress ' + str(i) + ':\t' + compName + '\n')
-        return optionsStr
+    def getMsg(mode):
+        if mode.compSelected:
+            mode.msg = f'Pulling recall data at {mode.compSelection} \n'
+            mode.msg += 'Please Wait... This will take several minutes.'
+        
+        else:
+            mode.msg = ('Please enter the number of the competition to '+ 
+                        'generate a recall rate graph: \n') 
+            for i in range(len(mode.app.dancer.competitionList)):
+                compName = str(mode.app.dancer.competitionList[i])
+                mode.msg += ('\tPress ' + str(i) + ':\t' + compName + '\n')
 
         
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
@@ -751,8 +780,9 @@ class O2CMApp(ModalApp):
         app.testUsingET = testUsingET()
         app.menuMode = MenuMode()
         app.compPicker = CompPicker()
+        # app.recallGraphMode = RecallGraphMode()
         app.setActiveMode(app.splashScreenMode)
-        app.timerDelay = 50
+        app.timerDelay = 500
 
 app = O2CMApp(width=1000, height=650)
 
