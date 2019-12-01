@@ -234,15 +234,15 @@ class Dancer(object):
         self.lastName = lastName
         self.resultsURL = (f'http://results.o2cm.com/individual.asp?' +
                            f'szLast={lastName}&szFirst={firstName}')
-        self.eventsByLevel = {'Gold': [], 'Silver': [], 'Bronze': [], 'Newcomer': []}
+        self.eventsByLevel = dict(Gold=[], Silver=[], Bronze=[], Newcomer=[])
         self.getCompetitions()
-        self.newcomerYCNs = dict()
-        self.bronzeYCNs = dict()
+        self.newcomerYCN = dict()
+        self.bronzeYCN = dict()
         self.silverYCNs = dict()
         self.goldYCNs = dict()
         self.ycnDict = dict()
-        self.createYCNDict(self.newcomerYCNs)
-        self.createYCNDict(self.bronzeYCNs)
+        self.createYCNDict(self.newcomerYCN)
+        self.createYCNDict(self.bronzeYCN)
         self.createYCNDict(self.silverYCNs)
         self.createYCNDict(self.goldYCNs)
 
@@ -289,117 +289,80 @@ class Dancer(object):
             d['Smooth'][dance] = 0
 
     def getYCNPoints(self):
-        self.getGoldYCN()
-        self.getSilverYCN()
-        self.getBronzeYCN()
-        self.getNewcomerYCN()
+        self.getYCN('Gold', self.goldYCNs, None)
+        self.getYCN('Silver', self.silverYCNs, self.goldYCNs)
+        self.getYCN('Bronze', self.bronzeYCN, self.silverYCNs)
+        self.getYCN('Newcomer', self.newcomerYCN, self.bronzeYCN)
 
-        self.ycnDict['Newcomer'] = self.newcomerYCNs
-        self.ycnDict['Bronze'] = self.bronzeYCNs
+        self.ycnDict['Newcomer'] = self.newcomerYCN
+        self.ycnDict['Bronze'] = self.bronzeYCN
         self.ycnDict['Silver'] = self.silverYCNs
         self.ycnDict['Gold'] = self.goldYCNs
 
-    def getGoldYCN(self):
-        for goldEvent in self.eventsByLevel['Gold']:
-            for dance in goldEvent.dance:
-                style = goldEvent.style
-                if style not in self.goldYCNs:
-                    self.goldYCNs[style] = dict()
-                    self.goldYCNs[style]['Total'] = 0
+    def getYCN(self, level, currYCNDict, prevYCNDict):
+        if prevYCNDict is not None:
+            for style in prevYCNDict:
+                for dance in prevYCNDict[style]:
+                    currYCNDict[style][dance] = prevYCNDict[style][dance] * 2
 
-                if dance in self.goldYCNs[style]:
-                    self.goldYCNs[style][dance] += goldEvent.YCNPoints
+        for event in self.eventsByLevel[level]:
+            for dance in event.dance:
+                style = event.style
+                if style not in currYCNDict:
+                    currYCNDict[style] = dict()
+                    currYCNDict[style]['Total'] = 0
+
+                if dance in currYCNDict[style]:
+                    currYCNDict[style][dance] += event.YCNPoints
                 else:
-                    self.goldYCNs[style][dance] = goldEvent.YCNPoints
+                    currYCNDict[style][dance] = event.YCNPoints
 
-                self.goldYCNs[style]['Total'] += goldEvent.YCNPoints
-
-    def getSilverYCN(self):
-
-        for style in self.goldYCNs:
-            for dance in self.goldYCNs[style]:
-                self.silverYCNs[style][dance] = self.goldYCNs[style][dance] * 2
-
-        for silverEvent in self.eventsByLevel['Silver']:
-            for dance in silverEvent.dance:
-                style = silverEvent.style
-                if style not in self.silverYCNs:
-                    self.silverYCNs[style] = dict()
-                    self.silverYCNs[style]['Total'] = 0
-
-                if dance in self.silverYCNs[style]:
-                    self.silverYCNs[style][dance] += silverEvent.YCNPoints
-                else:
-                    self.silverYCNs[style][dance] = silverEvent.YCNPoints
-
-                self.silverYCNs[style]['Total'] += silverEvent.YCNPoints
-
-    def getBronzeYCN(self):
-        for style in self.silverYCNs:
-            for dance in self.silverYCNs[style]:
-                self.silverYCNs[style][dance]
-                self.bronzeYCNs[style][dance] = self.silverYCNs[style][dance] * 2
-
-        for bronzeEvent in self.eventsByLevel['Bronze']:
-
-            for dance in bronzeEvent.dance:
-                style = bronzeEvent.style
-                if style not in self.bronzeYCNs:
-                    self.bronzeYCNs[style] = dict()
-                    self.bronzeYCNs[style]['Total'] = 0
-
-                if dance in self.bronzeYCNs[style]:
-                    self.bronzeYCNs[style][dance] += bronzeEvent.YCNPoints
-                else:
-                    self.bronzeYCNs[style][dance] = bronzeEvent.YCNPoints
-
-                self.bronzeYCNs[style]['Total'] += bronzeEvent.YCNPoints
-
-    def getNewcomerYCN(self):
-        for style in self.bronzeYCNs:
-            for dance in self.bronzeYCNs[style]:
-                self.bronzeYCNs[style][dance]
-                self.newcomerYCNs[style][dance] = self.bronzeYCNs[style][dance] * 2
-
-        for newcomerEvent in self.eventsByLevel['Newcomer']:
-
-            for dance in newcomerEvent.dance:
-                style = newcomerEvent.style
-                if style not in self.newcomerYCNs:
-                    self.newcomerYCNs[style] = dict()
-                    self.newcomerYCNs[style]['Total'] = 0
-
-                if dance in self.newcomerYCNs[style]:
-                    self.newcomerYCNs[style][dance] += newcomerEvent.YCNPoints
-                else:
-                    self.newcomerYCNs[style][dance] = newcomerEvent.YCNPoints
-
-                self.newcomerYCNs[style]['Total'] += newcomerEvent.YCNPoints
+                currYCNDict[style]['Total'] += event.YCNPoints
 
 
 class ElliottToy(object):
     def __init__(self, mode):
         self.ycnDict = {
-            'Newcomer': {'Latin': {'Total': 126, 'Samba': 30, 'Cha Cha': 38, 'Jive': 20, 'Rumba': 38, 'Paso Doble': 0},
-                         'Rhythm': {'Total': 22, 'Cha Cha': 7, 'Swing': 6, 'Bolero': 0, 'Rumba': 5, 'Mambo': 4},
-                         'Standard': {'Total': 222, 'V. Waltz': 0, 'Tango': 38, 'Foxtrot': 58, 'Quickstep': 74,
-                                      'Waltz': 52},
-                         'Smooth': {'Total': 122, 'V. Waltz': 2, 'Tango': 31, 'Foxtrot': 30, 'Waltz': 59}},
-            'Bronze': {'Latin': {'Total': 63, 'Samba': 15, 'Cha Cha': 19, 'Jive': 10, 'Rumba': 19, 'Paso Doble': 0},
-                       'Rhythm': {'Total': 10, 'Cha Cha': 3, 'Swing': 3, 'Bolero': 0, 'Rumba': 2, 'Mambo': 2},
-                       'Standard': {'Total': 111, 'V. Waltz': 0, 'Tango': 19, 'Foxtrot': 29, 'Quickstep': 37,
-                                    'Waltz': 26},
-                       'Smooth': {'Total': 59, 'V. Waltz': 1, 'Tango': 14, 'Foxtrot': 15, 'Waltz': 29}},
-            'Silver': {'Latin': {'Total': 23, 'Samba': 7, 'Cha Cha': 6, 'Jive': 4, 'Rumba': 6, 'Paso Doble': 0},
-                       'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0},
-                       'Standard': {'Total': 44, 'V. Waltz': 0, 'Tango': 8, 'Foxtrot': 13, 'Quickstep': 14, 'Waltz': 9},
-                       'Smooth': {'Total': 28, 'V. Waltz': 0, 'Tango': 7, 'Foxtrot': 7, 'Waltz': 14}},
-            'Gold': {'Latin': {'Total': 4, 'Samba': 1, 'Cha Cha': 1, 'Jive': 1, 'Rumba':
-                1, 'Paso Doble': 0},
-                     'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0, 'Rumba': 0, 'Mambo': 0},
-                     'Standard': {'Total': 16, 'V. Waltz': 0, 'Tango': 3, 'Foxtrot': 5, 'Quickstep': 5, 'Waltz': 3},
-                     'Smooth': {'Total': 8, 'V. Waltz': 0, 'Tango': 2, 'Foxtrot': 2, 'Waltz': 4}}}
-        self.competitionList = ['02-16-19 - The UPenn Classic', '10-26-19 - Keystone Dancesport Classic',
+            'Newcomer': {
+                'Latin': {'Total': 126, 'Samba': 30, 'Cha Cha': 38, 'Jive': 20,
+                          'Rumba': 38, 'Paso Doble': 0},
+                'Rhythm': {'Total': 22, 'Cha Cha': 7, 'Swing': 6, 'Bolero': 0,
+                           'Rumba': 5, 'Mambo': 4},
+                'Standard': {'Total': 222, 'V. Waltz': 0, 'Tango': 38,
+                             'Foxtrot': 58, 'Quickstep': 74,
+                             'Waltz': 52},
+                'Smooth': {'Total': 122, 'V. Waltz': 2, 'Tango': 31,
+                           'Foxtrot': 30, 'Waltz': 59}},
+            'Bronze': {
+                'Latin': {'Total': 63, 'Samba': 15, 'Cha Cha': 19, 'Jive': 10,
+                          'Rumba': 19, 'Paso Doble': 0},
+                'Rhythm': {'Total': 10, 'Cha Cha': 3, 'Swing': 3, 'Bolero': 0,
+                           'Rumba': 2, 'Mambo': 2},
+                'Standard': {'Total': 111, 'V. Waltz': 0, 'Tango': 19,
+                             'Foxtrot': 29, 'Quickstep': 37,
+                             'Waltz': 26},
+                'Smooth': {'Total': 59, 'V. Waltz': 1, 'Tango': 14,
+                           'Foxtrot': 15, 'Waltz': 29}},
+            'Silver': {
+                'Latin': {'Total': 23, 'Samba': 7, 'Cha Cha': 6, 'Jive': 4,
+                          'Rumba': 6, 'Paso Doble': 0},
+                'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0, 'Bolero': 0,
+                           'Rumba': 0, 'Mambo': 0},
+                'Standard': {'Total': 44, 'V. Waltz': 0, 'Tango': 8,
+                             'Foxtrot': 13, 'Quickstep': 14, 'Waltz': 9},
+                'Smooth': {'Total': 28, 'V. Waltz': 0, 'Tango': 7, 'Foxtrot': 7,
+                           'Waltz': 14}},
+            'Gold': {'Latin': {'Total': 4, 'Samba': 1, 'Cha Cha': 1, 'Jive': 1,
+                               'Rumba':
+                                   1, 'Paso Doble': 0},
+                     'Rhythm': {'Total': 0, 'Cha Cha': 0, 'Swing': 0,
+                                'Bolero': 0, 'Rumba': 0, 'Mambo': 0},
+                     'Standard': {'Total': 16, 'V. Waltz': 0, 'Tango': 3,
+                                  'Foxtrot': 5, 'Quickstep': 5, 'Waltz': 3},
+                     'Smooth': {'Total': 8, 'V. Waltz': 0, 'Tango': 2,
+                                'Foxtrot': 2, 'Waltz': 4}}}
+        self.competitionList = ['02-16-19 - The UPenn Classic',
+                                '10-26-19 - Keystone Dancesport Classic',
                                 '11-23-19 - OSB Collegiate Challenge 2019']
 
 
@@ -464,10 +427,14 @@ class YCNMode(Mode):
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
-        smoothDances = ['', 'Waltz', 'Tango', 'Foxtrot', 'V. Waltz', 'Total', '']
-        stdDances = ['Waltz', 'Quickstep', 'Tango', 'Foxtrot', 'V. Waltz', 'Total', '']
-        rhythmDances = ['Cha Cha', 'Rumba', 'Swing', 'Mambo', 'Bolero', 'Total', '']
-        latinDances = ['Cha Cha', 'Rumba', 'Samba', 'Jive', 'Paso Doble', 'Total', '']
+        smoothDances = ['', 'Waltz', 'Tango', 'Foxtrot', 'V. Waltz', 'Total',
+                        '']
+        stdDances = ['Waltz', 'Quickstep', 'Tango', 'Foxtrot', 'V. Waltz',
+                     'Total', '']
+        rhythmDances = ['Cha Cha', 'Rumba', 'Swing', 'Mambo', 'Bolero', 'Total',
+                        '']
+        latinDances = ['Cha Cha', 'Rumba', 'Samba', 'Jive', 'Paso Doble',
+                       'Total', '']
 
         mode.styleAndDanceDict = dict()
         mode.styleAndDanceDict['Smooth'] = smoothDances
@@ -508,7 +475,7 @@ class YCNMode(Mode):
             if row in [1, 7, 14, 21]: continue
 
             if row == 0:
-                fill = 'light blue'
+                fill = 'light green'
             else:
                 fill = None
             for col in range(mode.cols):
@@ -567,7 +534,8 @@ class YCNMode(Mode):
                             font = 'Arial 10 bold'
                             if points >= 7: fill = 'red'
                         (x0, y0, x1, y1) = mode.getCellBounds(row, col)
-                        canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
+                        canvas.create_text(x1 + (x0 - x1) / 2,
+                                           y1 + (y0 - y1) / 2,
                                            text=points, font=font,
                                            fill=fill)
                     row += 1
@@ -703,7 +671,7 @@ class CompPicker(Mode):
         mode.compSelected = False
         mode.getMsg()
 
-    # TODO
+    # TODO: get recall tables
     def timerFired(mode):
         mode.app.dancer
         mode.app.setActiveMode(mode.app.recallGraphMode)
@@ -744,6 +712,7 @@ class CompPicker(Mode):
                 mode.msg += ('\tPress ' + str(i) + ':\t' + compName + '\n')
 
 
+# TODO: implement recall graph mode
 class RecallGraphMode(Mode):
     pass
 
