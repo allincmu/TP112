@@ -122,37 +122,6 @@ class Event(object):
             data.append([ele for ele in cols])
         
         return data
-    
-    # # From ___________________________________________________________________________________________________
-    # # With slight edits
-    # def print2dList(self, a, compact = False, number = 120):
-    #     foundNum = False
-    #     a.pop(0)
-    #     if (a == []):
-    #         # So we don't crash accessing a[0]
-    #         print([])
-    #         return
-    #     rows = len(a)
-    #     cols = len(a[0])
-    #     fieldWidth = maxItemLength(a)
-    #     print("[ ", end="")
-    #     for row in range(rows):
-    #         if (row > 0):
-    #             if compact == True:
-    #                 if a[row][0] != str(number): 
-    #                     foundNum = True
-    #                     continue
-    #             print("\n  ", end="")
-    #         print("[ ", end="")
-    #         for col in range(cols):
-    #             if (col > 0): print(", ", end="")
-    #             # The next 2 lines print a[row][col] with the given fieldWidth
-    #             formatSpec = "%" + str(fieldWidth) + "s"
-    #             print(formatSpec % str(a[row][col]), end="")
-    #         print(" ]", end="")
-    #         if foundNum == True:
-    #             break
-    #     print("]")
 
     def getStyleAndDance(self):
         if 'Am.' in self.eventName:
@@ -698,7 +667,7 @@ class MenuMode(Mode):
         elif event.key == '3':
             mode.app.setActiveMode(mode.app.ycnModeCondensed)
         elif event.key == '4':
-            # mode.app.compPicker.resetMode()
+            mode.app.compPicker.resetMode()
             mode.app.setActiveMode(mode.app.compPicker)
 
         # More will be added later
@@ -723,9 +692,10 @@ class CompPicker(Mode):
         mode.compSelected = False
         mode.getMsg()
 
+    # TODO
     def timerFired(mode):
-        mode.getMsg()
         mode.app.dancer
+        mode.app.setActiveMode(mode.app.recallGraphMode)
         
     def keyPressed(mode, event):
         compIndex = event.key
@@ -743,14 +713,8 @@ class CompPicker(Mode):
             mode.app.showMessage(f'Invalid Entry: \'{compIndex}\' \n' + 
                                   'There is no competition associated with ' +
                                   f'\'{compIndex}\'')
-        print(mode.compSelected)
-        
-
-        
-            
-            
-                
-
+        mode.getMsg()
+    
     def redrawAll(mode, canvas):
         font = 'Arial 20'
         canvas.create_text(mode.app.width/2, mode.app.height/2, 
@@ -769,6 +733,9 @@ class CompPicker(Mode):
                 compName = str(mode.app.dancer.competitionList[i])
                 mode.msg += ('\tPress ' + str(i) + ':\t' + compName + '\n')
 
+class RecallGraphMode(Mode):
+    pass
+
         
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
 # With slight edits
@@ -780,7 +747,7 @@ class O2CMApp(ModalApp):
         app.testUsingET = testUsingET()
         app.menuMode = MenuMode()
         app.compPicker = CompPicker()
-        # app.recallGraphMode = RecallGraphMode()
+        app.recallGraphMode = RecallGraphMode()
         app.setActiveMode(app.splashScreenMode)
         app.timerDelay = 500
 
