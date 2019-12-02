@@ -1,48 +1,57 @@
+import time
+import urllib.request
+from tkinter import *
+
+from bs4 import BeautifulSoup
 # From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
 from cmu_112_graphics import *
-from tkinter import *
-from bs4 import BeautifulSoup
 from mechanize import Browser
-import urllib.request, time, random
 
 
 class Competition(object):
     competitions = dict()
 
-    def __init__(self, html, name, Dancer):
+    def __init__(self, html, name, dancer):
+        self.dancer = dancer
+        self.events = dict()
         startTime = time.time()
         self.name = name
         self.html = BeautifulSoup(html, features='html.parser')
-        self.getEvents(html, Dancer)
+        self.getEvents(dancer)
         self.number = None
         Competition.competitions[self.name] = self
         # self.getJudgeNumbers()
         endTime = time.time()
-        print('done comp ', endTime - startTime)
+        # print('done comp ', endTime - startTime)
 
-    def getEvents(self, html, dancer):
-        self.eventsURL = dict()
+    def getEvents(self, dancer):
         for link in self.html.find_all('a'):
             evtName = link.string.strip()
-            event = Event(link.get('href'), evtName)
-            self.eventsURL[evtName] = event
+            event = Event(link.get('href'), evtName, self.dancer)
+            self.events[evtName] = event
             if event.level in dancer.eventsByLevel:
                 dancer.eventsByLevel[event.level].append(event)
             else:
                 dancer.eventsByLevel[event.level] = [event]
 
-    # def getJudgeNumbers(self):
-    #     for event in eventsURL:
-    #         eventLink = eventsURL[event]
+    # TODO: JUDGES LETTERS
+    def getJudgeLetters(self):
+        for event in self.events:
+            eventLink = self.events[event]
 
     def __repr__(self):
         compStr = ''
-        for event in self.eventsURL:
-            compStr += (str(self.eventsURL[event]) + '\n')
+        for event in self.events:
+            compStr += (str(self.events[event]) + '\n')
         return self.name
 
-    def addEvent(self, Event):
-        self.events.append(Event)
+    def getResultsTablesForComp(self):
+        start = time.time()
+        for eventName in self.events:
+            event = self.events[eventName]
+            event.getResultsTablesForEvent()
+        end = time.time()
+        print('done comp', end - start)
 
 
 class Event(object):
@@ -52,8 +61,8 @@ class Event(object):
     rhythmDances = {'Cha Cha', 'Rumba', 'Swing', 'Mambo', 'Bolero'}
     levels = {'Newcomer', 'Bronze', 'Silver', 'Gold'}
 
-    def __init__(self, url, eventName):
-        starttime = time.time()
+    def __init__(self, url, eventName, dancer):
+        self.dancer = dancer
         self.eventName = eventName
         self.url = url
         content = urllib.request.urlopen(self.url).read()
@@ -73,11 +82,8 @@ class Event(object):
         self.getLevel()
         self.getYCNPoints()
 
-        # self.getResultsTables()
-
-        endtime = time.time()
-
-    def getRoundName(self, i):
+    @staticmethod
+    def getRoundName(i):
         roundNames = ['Final', 'Semi-Final', 'Quarter-Final']
         if i <= 2:
             return roundNames[i]
@@ -85,17 +91,20 @@ class Event(object):
             deno = 2 ** i
             return "1/" + str(deno) + "-Final"
 
-    def getResultsTables(self):
+    def getResultsTablesForEvent(self):
         starttime = time.time()
-        for i in range(1, self.rounds):
-            roundName = self.getRoundName(i)
-            resultTable = self.getResultTable(i)
+        maxRound = self.rounds - 1
+        for i in range(maxRound, 0, -1):
+            roundName = Event.getRoundName(i)
+            resultTable = self.getResultTableForRound(i, maxRound)
             self.resultsTables[roundName] = resultTable
+            print(roundName, resultTable)
+            if resultTable[-1][-1] != 'R':
+                break
         endtime = time.time()
         print('done results tables ', endtime - starttime)
-        print(self.resultsTables)
 
-    def getResultTable(self, i):
+    def getRoundPage(self, i):
         br = Browser()
         br.addheaders = [('User-agent', 'Firefox')]
         br.open(self.url)
@@ -106,17 +115,44 @@ class Event(object):
         else:
             i = 0
         soup = BeautifulSoup(br.response().read(), features='html.parser')
+        return soup
 
-        # From: https://stackoverflow.com/questions/23377533/ +
+    def getResultTableForRound(self, i, maxRound):
+        roundPage = self.getRoundPage(i)
+        if i == maxRound:
+            self.getCoupleNumber(roundPage)
+
+        # Consulted: https://stackoverflow.com/questions/23377533/ +
         #       python-beautifulsoup-parsing-table
         data = []
-        table = soup.find('table', attrs={'class': 't1n'})
+        table = roundPage.find('table', attrs={'class': 't1n'})
         rows = table.find_all('tr')
-        for row in rows:
-            cols = row.find_all('td')
-            cols = [ele.text.strip() for ele in cols]
-            data.append([ele for ele in cols])
+        for rowIndex in range(1, len(rows)):
+            columns = []
+            row = rows[rowIndex]
+            if rowIndex == 1:
+                rowElements = row.find_all('td')
+                for element in rowElements:
+                    columns += [element.text.strip()]
+                data.append([element for element in columns])
+            else:
+                rowElements = row.find_all('td')
+                competitorNumber = rowElements[0].text.strip()
+                if competitorNumber != self.number:
+                    continue
+                for elementIndex in range(len(rowElements)):
+                    element = rowElements[elementIndex].text.strip()
+                    columns += [element]
+                if columns != []:
+                    data = Event.truncateExcessData(columns, data)
+        return data
 
+    @staticmethod
+    def truncateExcessData(columns, data):
+        colsToBeAdded = []
+        for i in range(len(data[0])):
+            colsToBeAdded.append(columns[i])
+        data.append(colsToBeAdded)
         return data
 
     def getStyleAndDance(self):
@@ -211,11 +247,6 @@ class Event(object):
         else:
             self.YCNPoints = 0
 
-            # might implement later
-
-    def getDCDIPoints(self):
-        pass
-
     def __repr__(self):
         eventStr = f'Event Name: {self.eventName}'
         eventStr += f'\n\tURL: {self.url}'
@@ -227,11 +258,20 @@ class Event(object):
         eventStr += f'\n\tPoints: {self.YCNPoints}'
         return self.eventName
 
+    def getCoupleNumber(self, eventPage):
+        tableElements = eventPage.find_all('td')
+        for element in tableElements:
+            linksInTableElements = element.find_all('a')
+            for link in linksInTableElements:
+                if link.string == self.dancer.fullName:
+                    self.number = element.previous_sibling.string
+
 
 class Dancer(object):
     def __init__(self, firstName, lastName):
         self.firstName = firstName
         self.lastName = lastName
+        self.fullName = self.firstName + ' ' + self.lastName
         self.resultsURL = (f'http://results.o2cm.com/individual.asp?' +
                            f'szLast={lastName}&szFirst={firstName}')
         self.eventsByLevel = dict(Gold=[], Silver=[], Bronze=[], Newcomer=[])
@@ -247,7 +287,6 @@ class Dancer(object):
         self.createYCNDict(self.goldYCNs)
 
         self.getYCNPoints()
-        print(self.ycnDict)
 
     def getCompetitions(self):
         content = urllib.request.urlopen(self.resultsURL).read()
@@ -410,8 +449,8 @@ class SplashScreenMode(Mode):
 
     def timerFired(mode):
         if mode.dancerSet == True:
-            mode.app.dancer = Dancer(mode.firstName, mode.lastName)
-            if mode.app.dancer.competitions == ['No Results on File']:
+            mode.app.competitor = Dancer(mode.firstName, mode.lastName)
+            if mode.app.competitor.competitions == ['No Results on File']:
                 mode.app.showMessage(f'No Results on O2CM for {mode.name}.\n' +
                                      'Please re-enter dancer name.')
                 mode.resetApp()
@@ -526,7 +565,7 @@ class YCNMode(Mode):
                         row += 1
                         continue
 
-                    points = mode.app.dancer.ycnDict[level][style][dance]
+                    points = mode.app.competitor.ycnDict[level][style][dance]
                     if points != 0:
                         font = 'Arial 10'
                         fill = 'black'
@@ -615,7 +654,7 @@ class YCNModeCondensed(Mode):
         row = 1
         for level in levelOrder:
             for style in mode.styleOrder:
-                points = mode.app.dancer.ycnDict[level][style]['Total']
+                points = mode.app.competitor.ycnDict[level][style]['Total']
                 if points != 0:
                     fill = 'black'
                     font = 'Arial 20 bold'
@@ -631,22 +670,22 @@ class YCNModeCondensed(Mode):
 
 class testUsingET(Mode):
     def appStarted(mode):
-        mode.app.dancer = ElliottToy(mode)
+        mode.app.competitor = ElliottToy(mode)
         mode.app.setActiveMode(mode.app.menuMode)
 
 
 class MenuMode(Mode):
     def keyPressed(mode, event):
         if event.key == '1':
-            mode.app.splashScreenMode.resetApp()
             mode.app.setActiveMode(mode.app.splashScreenMode)
+            mode.app.splashScreenMode.resetApp()
         elif event.key == '2':
             mode.app.setActiveMode(mode.app.ycnMode)
         elif event.key == '3':
             mode.app.setActiveMode(mode.app.ycnModeCondensed)
         elif event.key == '4':
-            mode.app.compPicker.resetMode()
             mode.app.setActiveMode(mode.app.compPicker)
+            mode.app.compPicker.resetMode()
 
         # More will be added later
 
@@ -671,21 +710,24 @@ class CompPicker(Mode):
         mode.compSelected = False
         mode.getMsg()
 
-    # TODO: get recall tables
     def timerFired(mode):
-        mode.app.dancer
-        mode.app.setActiveMode(mode.app.recallGraphMode)
+        if mode.compSelected:
+            mode.compSelection.getResultsTablesForComp()
+            mode.app.setActiveMode(mode.app.recallGraphMode)
 
     def keyPressed(mode, event):
         compIndex = event.key
-        numComps = mode.app.dancer.competitionList
+        numComps = mode.app.competitor.competitionList
 
-        if compIndex.isalpha():
+        if mode.compSelected:
+            return
+
+        elif compIndex.isalpha():
             mode.app.setActiveMode(mode.app.menuMode)
 
         elif compIndex.isnumeric() and int(compIndex) < len(numComps):
             compIndex = int(compIndex)
-            mode.compSelection = mode.app.dancer.competitionList[compIndex]
+            mode.compSelection = mode.app.competitor.competitionList[compIndex]
             mode.compSelected = True
 
         else:
@@ -707,14 +749,16 @@ class CompPicker(Mode):
         else:
             mode.msg = ('Please enter the number of the competition to ' +
                         'generate a recall rate graph: \n')
-            for i in range(len(mode.app.dancer.competitionList)):
-                compName = str(mode.app.dancer.competitionList[i])
+            for i in range(len(mode.app.competitor.competitionList)):
+                compName = str(mode.app.competitor.competitionList[i])
                 mode.msg += ('\tPress ' + str(i) + ':\t' + compName + '\n')
 
 
 # TODO: implement recall graph mode
 class RecallGraphMode(Mode):
-    pass
+    def keyPressed(mode, event):
+        mode.app.setActiveMode(mode.app.menuMode)
+
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
