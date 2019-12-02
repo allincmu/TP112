@@ -98,7 +98,7 @@ class Event(object):
             roundName = Event.getRoundName(i)
             resultTable = self.getResultTableForRound(i, maxRound)
             self.resultsTables[roundName] = resultTable
-            print(roundName, resultTable)
+            print(self.eventName, roundName, resultTable)
             if resultTable[-1][-1] != 'R':
                 break
         endtime = time.time()
