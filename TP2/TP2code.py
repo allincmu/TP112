@@ -7,11 +7,64 @@ from bs4 import BeautifulSoup
 from cmu_112_graphics import *
 from mechanize import Browser
 
+# From: https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
+import decimal
+
+
+def roundHalfUp(d):
+    # Round to nearest with ties going away from zero.
+    rounding = decimal.ROUND_HALF_UP
+    # See other rounding options here:
+    # https://docs.python.org/3/library/decimal.html#rounding-modes
+    return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
+
+
+###############################################################################
+# Helper function for print2dList.
+# This finds the maximum length of the string
+# representation of any item in the 2d list
+def maxItemLength(a):
+    maxLen = 0
+    rows = len(a)
+    cols = len(a[0])
+    for row in range(rows):
+        for col in range(cols):
+            maxLen = max(maxLen, len(str(a[row][col])))
+    return maxLen
+
+
+# Because Python prints 2d lists on one row,
+# we might want to write our own function
+# that prints 2d lists a bit nicer.
+def print2dList(a):
+    if (a == []):
+        # So we don't crash accessing a[0]
+        print([])
+        return
+    rows = len(a)
+    cols = len(a[0])
+    fieldWidth = maxItemLength(a)
+    print("[ ", end="")
+    for row in range(rows):
+        if (row > 0): print("\n  ", end="")
+        print("[ ", end="")
+        for col in range(cols):
+            if (col > 0): print(", ", end="")
+            # The next 2 lines print a[row][col] with the given fieldWidth
+            formatSpec = "%" + str(fieldWidth) + "s"
+            print(formatSpec % str(a[row][col]), end="")
+        print(" ]", end="")
+    print("]")
+
+
+#################################################################################
+
 
 class Competition(object):
     competitions = dict()
 
     def __init__(self, html, name, dancer):
+        self.recallPercentages = dict()
         self.dancer = dancer
         self.events = dict()
         startTime = time.time()
@@ -19,10 +72,18 @@ class Competition(object):
         self.html = BeautifulSoup(html, features='html.parser')
         self.getEvents(dancer)
         self.number = None
+        self.numberOfPossibleRecalls = dict()
+        self.numberOfRecalls = dict()
         Competition.competitions[self.name] = self
         # self.getJudgeNumbers()
         endTime = time.time()
         # print('done comp ', endTime - startTime)
+
+    def __repr__(self):
+        compStr = ''
+        for event in self.events:
+            compStr += (str(self.events[event]) + '\n')
+        return self.name
 
     def getEvents(self, dancer):
         for link in self.html.find_all('a'):
@@ -39,12 +100,6 @@ class Competition(object):
         for event in self.events:
             eventLink = self.events[event]
 
-    def __repr__(self):
-        compStr = ''
-        for event in self.events:
-            compStr += (str(self.events[event]) + '\n')
-        return self.name
-
     def getResultsTablesForComp(self):
         start = time.time()
         for eventName in self.events:
@@ -52,6 +107,54 @@ class Competition(object):
             event.getResultsTablesForEvent()
         end = time.time()
         print('done comp', end - start)
+
+    def getRecallPercentagesForComp(self):
+        for eventName in self.events:
+            event = self.events[eventName]
+            self.getRecallPercentagesForEvent(event)
+        self.calculateRecallPercentages()
+        for judge in self.recallPercentages:
+            percentage = self.recallPercentages[judge]
+            print(f'Judge {judge}: {percentage}%')
+
+    def getRecallPercentagesForEvent(self, event):
+        for heat in event.resultsTables:
+            self.getRecallPercentagesForHeat(event, heat)
+
+    def getRecallPercentagesForHeat(self, event, heat):
+        resultTable = event.resultsTables[heat]
+        for judgeIndex in range(len(resultTable[0])):
+            judgeNumber = resultTable[0][judgeIndex]
+            if judgeNumber.isnumeric():
+                if judgeNumber in self.numberOfPossibleRecalls:
+                    self.numberOfPossibleRecalls[judgeNumber] += 1
+                else:
+                    self.numberOfPossibleRecalls[judgeNumber] = 1
+                recall = resultTable[1][judgeIndex]
+                if recall:
+                    if judgeNumber in self.numberOfRecalls:
+                        self.numberOfRecalls[judgeNumber] += 1
+                    else:
+                        self.numberOfRecalls[judgeNumber] = 1
+
+        print2dList(resultTable)
+        print(self.numberOfRecalls)
+        print(self.numberOfPossibleRecalls, '\n')
+
+    def calculateRecallPercentages(self):
+        for judge in self.numberOfPossibleRecalls:
+            numPossibleRecalls = self.numberOfPossibleRecalls[judge]
+            if judge not in self.numberOfRecalls:
+                self.recallPercentages[judge] = 0
+            else:
+                numRecalls = self.numberOfRecalls[judge]
+                recallRate = numRecalls / numPossibleRecalls
+                recallPercentage = Competition.convertRateToPercent(recallRate)
+                self.recallPercentages[judge] = recallPercentage
+
+    @staticmethod
+    def convertRateToPercent(rate):
+        return roundHalfUp(rate * 100)
 
 
 class Event(object):
@@ -82,6 +185,17 @@ class Event(object):
         self.getLevel()
         self.getYCNPoints()
 
+    def __repr__(self):
+        eventStr = f'Event Name: {self.eventName}'
+        eventStr += f'\n\tURL: {self.url}'
+        eventStr += f'\n\tLevel: {self.level}'
+        eventStr += f'\n\tStyle: {self.style}'
+        eventStr += f'\n\tDance: {self.dance}'
+        eventStr += f'\n\tRounds: {self.rounds}'
+        eventStr += f'\n\tPlace: {self.place}'
+        eventStr += f'\n\tPoints: {self.YCNPoints}'
+        return self.eventName
+
     @staticmethod
     def getRoundName(i):
         roundNames = ['Final', 'Semi-Final', 'Quarter-Final']
@@ -90,70 +204,6 @@ class Event(object):
         else:
             deno = 2 ** i
             return "1/" + str(deno) + "-Final"
-
-    def getResultsTablesForEvent(self):
-        starttime = time.time()
-        maxRound = self.rounds - 1
-        for i in range(maxRound, 0, -1):
-            roundName = Event.getRoundName(i)
-            resultTable = self.getResultTableForRound(i, maxRound)
-            self.resultsTables[roundName] = resultTable
-            print(self.eventName, roundName, resultTable)
-            if resultTable[-1][-1] != 'R':
-                break
-        endtime = time.time()
-        print('done results tables ', endtime - starttime)
-
-    def getRoundPage(self, i):
-        br = Browser()
-        br.addheaders = [('User-agent', 'Firefox')]
-        br.open(self.url)
-        if i != None:
-            br.select_form(name="selectRound")
-            br['selCount'] = [str(i)]
-            br.submit()
-        else:
-            i = 0
-        soup = BeautifulSoup(br.response().read(), features='html.parser')
-        return soup
-
-    def getResultTableForRound(self, i, maxRound):
-        roundPage = self.getRoundPage(i)
-        if i == maxRound:
-            self.getCoupleNumber(roundPage)
-
-        # Consulted: https://stackoverflow.com/questions/23377533/ +
-        #       python-beautifulsoup-parsing-table
-        data = []
-        table = roundPage.find('table', attrs={'class': 't1n'})
-        rows = table.find_all('tr')
-        for rowIndex in range(1, len(rows)):
-            columns = []
-            row = rows[rowIndex]
-            if rowIndex == 1:
-                rowElements = row.find_all('td')
-                for element in rowElements:
-                    columns += [element.text.strip()]
-                data.append([element for element in columns])
-            else:
-                rowElements = row.find_all('td')
-                competitorNumber = rowElements[0].text.strip()
-                if competitorNumber != self.number:
-                    continue
-                for elementIndex in range(len(rowElements)):
-                    element = rowElements[elementIndex].text.strip()
-                    columns += [element]
-                if columns != []:
-                    data = Event.truncateExcessData(columns, data)
-        return data
-
-    @staticmethod
-    def truncateExcessData(columns, data):
-        colsToBeAdded = []
-        for i in range(len(data[0])):
-            colsToBeAdded.append(columns[i])
-        data.append(colsToBeAdded)
-        return data
 
     def getStyleAndDance(self):
         if 'Am.' in self.eventName:
@@ -247,17 +297,6 @@ class Event(object):
         else:
             self.YCNPoints = 0
 
-    def __repr__(self):
-        eventStr = f'Event Name: {self.eventName}'
-        eventStr += f'\n\tURL: {self.url}'
-        eventStr += f'\n\tLevel: {self.level}'
-        eventStr += f'\n\tStyle: {self.style}'
-        eventStr += f'\n\tDance: {self.dance}'
-        eventStr += f'\n\tRounds: {self.rounds}'
-        eventStr += f'\n\tPlace: {self.place}'
-        eventStr += f'\n\tPoints: {self.YCNPoints}'
-        return self.eventName
-
     def getCoupleNumber(self, eventPage):
         tableElements = eventPage.find_all('td')
         for element in tableElements:
@@ -265,6 +304,71 @@ class Event(object):
             for link in linksInTableElements:
                 if link.string == self.dancer.fullName:
                     self.number = element.previous_sibling.string
+
+    def getResultsTablesForEvent(self):
+        starttime = time.time()
+        maxRound = self.rounds - 1
+        for i in range(maxRound, 0, -1):
+            roundName = Event.getRoundName(i)
+            resultTable = self.getResultTableForRound(i, maxRound)
+            if len(resultTable) == 2:
+                self.resultsTables[roundName] = resultTable
+            # print(self.eventName, roundName, resultTable)
+            if resultTable[-1][-1] != 'R':
+                break
+        endtime = time.time()
+        print('done results tables ', endtime - starttime)
+
+    def getRoundPage(self, i):
+        br = Browser()
+        br.addheaders = [('User-agent', 'Firefox')]
+        br.open(self.url)
+        if i != None:
+            br.select_form(name="selectRound")
+            br['selCount'] = [str(i)]
+            br.submit()
+        else:
+            i = 0
+        soup = BeautifulSoup(br.response().read(), features='html.parser')
+        return soup
+
+    def getResultTableForRound(self, i, maxRound):
+        roundPage = self.getRoundPage(i)
+        if i == maxRound:
+            self.getCoupleNumber(roundPage)
+
+        # Consulted: https://stackoverflow.com/questions/23377533/ +
+        #       python-beautifulsoup-parsing-table
+        data = []
+        table = roundPage.find('table', attrs={'class': 't1n'})
+        rows = table.find_all('tr')
+        for rowIndex in range(1, len(rows)):
+            columns = []
+            row = rows[rowIndex]
+            if rowIndex == 1:
+                rowElements = row.find_all('td')
+                for element in rowElements:
+                    columns += [element.text.strip()]
+                data.append([element for element in columns])
+            else:
+                rowElements = row.find_all('td')
+                competitorNumber = rowElements[0].text.strip()
+                if competitorNumber != self.number:
+                    continue
+                for elementIndex in range(len(rowElements)):
+                    element = rowElements[elementIndex].text.strip()
+                    columns += [element]
+                if columns != []:
+                    data = Event.truncateExcessData(columns, data)
+        return data
+
+    @staticmethod
+    def truncateExcessData(columns, data):
+        colsToBeAdded = []
+        for i in range(len(data[0])):
+            colsToBeAdded.append(columns[i])
+        data.append(colsToBeAdded)
+        return data
 
 
 class Dancer(object):
@@ -328,17 +432,17 @@ class Dancer(object):
             d['Smooth'][dance] = 0
 
     def getYCNPoints(self):
-        self.getYCN('Gold', self.goldYCNs, None)
-        self.getYCN('Silver', self.silverYCNs, self.goldYCNs)
-        self.getYCN('Bronze', self.bronzeYCN, self.silverYCNs)
-        self.getYCN('Newcomer', self.newcomerYCN, self.bronzeYCN)
+        self.getYCNForLevel('Gold', self.goldYCNs, None)
+        self.getYCNForLevel('Silver', self.silverYCNs, self.goldYCNs)
+        self.getYCNForLevel('Bronze', self.bronzeYCN, self.silverYCNs)
+        self.getYCNForLevel('Newcomer', self.newcomerYCN, self.bronzeYCN)
 
         self.ycnDict['Newcomer'] = self.newcomerYCN
         self.ycnDict['Bronze'] = self.bronzeYCN
         self.ycnDict['Silver'] = self.silverYCNs
         self.ycnDict['Gold'] = self.goldYCNs
 
-    def getYCN(self, level, currYCNDict, prevYCNDict):
+    def getYCNForLevel(self, level, currYCNDict, prevYCNDict):
         if prevYCNDict is not None:
             for style in prevYCNDict:
                 for dance in prevYCNDict[style]:
@@ -410,15 +514,10 @@ class SplashScreenMode(Mode):
         mode.msg = 'Press any key to enter a dancer!'
         mode.dancerSet = False
 
-    def redrawAll(mode, canvas):
-        fontTitle = 'Arial 30 bold'
-        fontMsg = 'Arial 20 bold'
-        canvas.create_text(mode.width / 2, 150,
-                           text='Ballroom YCN Points Calculator',
-                           font=fontTitle)
-        canvas.create_text(mode.width / 2, 190, text='and Statistics Program',
-                           font=fontTitle)
-        canvas.create_text(mode.width / 2, 300, text=mode.msg, font=fontMsg)
+    def resetApp(mode):
+        Competition.competitions = None
+        mode.dancerSet = False
+        mode.msg = 'Press any key to enter a dancer!'
 
     def keyPressed(mode, event):
         if event.key == 'Tab':
@@ -442,11 +541,6 @@ class SplashScreenMode(Mode):
                 mode.firstName = firstName
                 mode.lastName = lastName
 
-    def resetApp(mode):
-        Competition.competitions = None
-        mode.dancerSet = False
-        mode.msg = 'Press any key to enter a dancer!'
-
     def timerFired(mode):
         if mode.dancerSet == True:
             mode.app.competitor = Dancer(mode.firstName, mode.lastName)
@@ -456,6 +550,16 @@ class SplashScreenMode(Mode):
                 mode.resetApp()
                 return
             mode.app.setActiveMode(mode.app.menuMode)
+
+    def redrawAll(mode, canvas):
+        fontTitle = 'Arial 30 bold'
+        fontMsg = 'Arial 20 bold'
+        canvas.create_text(mode.width / 2, 150,
+                           text='Ballroom YCN Points Calculator',
+                           font=fontTitle)
+        canvas.create_text(mode.width / 2, 190, text='and Statistics Program',
+                           font=fontTitle)
+        canvas.create_text(mode.width / 2, 300, text=mode.msg, font=fontMsg)
 
 
 class YCNMode(Mode):
@@ -520,23 +624,30 @@ class YCNMode(Mode):
             for col in range(mode.cols):
                 (x0, y0, x1, y1) = mode.getCellBounds(row, col)
                 canvas.create_rectangle(x0, y0, x1, y1, fill=fill)
-        mode.drawTableHeader(canvas)
+        mode.setUpHeaders()
+        mode.drawTableXHeaders(canvas)
+        mode.drawTableYHeaders(canvas)
         mode.drawDances(canvas)
-        mode.addYCNPoints(canvas)
+        mode.addYCNPointsToTable(canvas)
 
-    def drawTableHeader(mode, canvas):
+    def setUpHeaders(mode):
 
-        xheaders = ['Style', 'Dance', 'Newcomer', 'Bronze', 'Silver', 'Gold']
-        yheaders = [('Smooth', 2), ('Standard', 8),
-                    ('Rhythm', 15), ('Latin', 22)]
+        mode.xheaders = ['Style', 'Dance', 'Newcomer', 'Bronze', 'Silver',
+                         'Gold']
+        mode.yheaders = [('Smooth', 2), ('Standard', 8),
+                         ('Rhythm', 15), ('Latin', 22)]
+
+    def drawTableXHeaders(mode, canvas):
         font = 'Bold'
         for col in range(mode.cols):
             row = 0
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
-                               text=xheaders[col], font=font)
+                               text=mode.xheaders[col], font=font)
 
-        for style, row in yheaders:
+    def drawTableYHeaders(mode, canvas):
+        font = 'bold'
+        for style, row in mode.yheaders:
             col = 0
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
@@ -554,7 +665,7 @@ class YCNMode(Mode):
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=text, font=font)
 
-    def addYCNPoints(mode, canvas):
+    def addYCNPointsToTable(mode, canvas):
         levelOrder = ['Newcomer', 'Bronze', 'Silver', 'Gold']
         col = 2
         row = 1
@@ -582,29 +693,14 @@ class YCNMode(Mode):
             row = 1
 
 
-class YCNModeCondensed(Mode):
-
-    def keyPressed(mode, event):
-        mode.app.setActiveMode(mode.app.menuMode)
-
+# Subclass of YCNMode
+class YCNModeCondensed(YCNMode):
     def appStarted(mode):
         mode.rows = 5
         mode.cols = 5
         mode.app.margin = 50
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
-
-    # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
-    def getCellBounds(mode, row, col):
-        gridWidth = mode.app.width - 2 * mode.app.margin
-        gridHeight = mode.app.height - 2 * mode.app.margin
-        columnWidth = gridWidth / mode.cols
-        rowHeight = gridHeight / mode.rows
-        x0 = mode.app.margin + col * columnWidth
-        x1 = mode.app.margin + (col + 1) * columnWidth
-        y0 = mode.app.margin + row * rowHeight
-        y1 = mode.app.margin + (row + 1) * rowHeight
-        return (x0, y0, x1, y1)
 
     def redrawAll(mode, canvas):
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
@@ -627,28 +723,27 @@ class YCNModeCondensed(Mode):
             for col in range(mode.cols):
                 (x0, y0, x1, y1) = mode.getCellBounds(row, col)
                 canvas.create_rectangle(x0, y0, x1, y1, fill=fill)
-        mode.drawTableHeader(canvas)
-        mode.addYCNPoints(canvas)
 
-    def drawTableHeader(mode, canvas):
+        mode.setUpHeaders()
+        mode.drawTableXHeaders(canvas)  # Inherited from superclass
+        mode.drawTableYHeaders(canvas)
+        mode.addYCNPointsToTable(canvas)
 
-        xheaders = ['Style', 'Newcomer', 'Bronze', 'Silver', 'Gold']
-        yheaders = ['Smooth', 'Standard', 'Rhythm', 'Latin']
+    def setUpHeaders(mode):
+        mode.xheaders = ['Style', 'Newcomer', 'Bronze', 'Silver', 'Gold']
+        mode.yheaders = ['Smooth', 'Standard', 'Rhythm', 'Latin']
+
+    def drawTableYHeaders(mode, canvas):
         font = 'Bold'
-        for col in range(mode.cols):
-            row = 0
-            (x0, y0, x1, y1) = mode.getCellBounds(row, col)
-            canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
-                               text=xheaders[col], font=font)
-
         for row in range(1, mode.rows):
             col = 0
-            style = yheaders[row - 1]
+            style = mode.yheaders[row - 1]
+            # getCellBounds(row, col) inherited from superclass
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=style, font=font)
 
-    def addYCNPoints(mode, canvas):
+    def addYCNPointsToTable(mode, canvas):
         levelOrder = ['Newcomer', 'Bronze', 'Silver', 'Gold']
         col = 1
         row = 1
@@ -713,7 +808,9 @@ class CompPicker(Mode):
     def timerFired(mode):
         if mode.compSelected:
             mode.compSelection.getResultsTablesForComp()
+            mode.app.recallGraphMode.compSelection = mode.compSelection
             mode.app.setActiveMode(mode.app.recallGraphMode)
+            mode.app.recallGraphMode.resetApp()
 
     def keyPressed(mode, event):
         compIndex = event.key
@@ -759,6 +856,11 @@ class RecallGraphMode(Mode):
     def keyPressed(mode, event):
         mode.app.setActiveMode(mode.app.menuMode)
 
+    def appStarted(mode):
+        mode.resetApp()
+
+    def resetApp(mode):
+        mode.compSelection.getRecallPercentagesForComp()
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
