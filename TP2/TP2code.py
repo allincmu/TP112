@@ -773,7 +773,7 @@ class MenuMode(Mode):
     def keyPressed(mode, event):
         if event.key == '1':
             mode.app.setActiveMode(mode.app.splashScreenMode)
-            mode.app.splashScreenMode.resetApp()
+            mode.app.splashScreenMode.resetMode()
         elif event.key == '2':
             mode.app.setActiveMode(mode.app.ycnMode)
         elif event.key == '3':
@@ -810,7 +810,7 @@ class CompPicker(Mode):
             mode.compSelection.getResultsTablesForComp()
             mode.app.recallGraphMode.compSelection = mode.compSelection
             mode.app.setActiveMode(mode.app.recallGraphMode)
-            mode.app.recallGraphMode.resetApp()
+            mode.app.recallGraphMode.resetMode()
 
     def keyPressed(mode, event):
         compIndex = event.key
@@ -853,14 +853,63 @@ class CompPicker(Mode):
 
 # TODO: implement recall graph mode
 class RecallGraphMode(Mode):
-    def keyPressed(mode, event):
-        mode.app.setActiveMode(mode.app.menuMode)
 
     def appStarted(mode):
-        mode.resetApp()
+        mode.resetMode()
 
-    def resetApp(mode):
+    def resetMode(mode):
         mode.compSelection.getRecallPercentagesForComp()
+        numJudges = len(mode.compSelection.recallPercentages)
+        mode.rows = 101
+        mode.cols = numJudges * 2 + 1
+        mode.app.margin = 50
+
+    def keyPressed(mode, event):
+        mode.app.setActiveMode(mode.app.compPicker)
+        mode.app.compPicker.resetMode()
+
+    # From https://www.cs.cmu.edu/~112/notes/notes-animations-part1.html
+    # With slight edits
+    def getCellBounds(mode, row, col):
+        gridWidth = mode.app.width - 2 * mode.app.margin
+        gridHeight = mode.app.height - 2 * mode.app.margin
+        columnWidth = gridWidth / mode.cols
+        rowHeight = gridHeight / (mode.rows + 5)
+        x0 = mode.app.margin + col * columnWidth
+        x1 = mode.app.margin + (col + 1) * columnWidth
+        y0 = mode.app.margin + row * rowHeight
+        y1 = mode.app.margin + (row + 1) * rowHeight
+        if row == 101:
+            y1 = mode.app.margin + (row + 4) * rowHeight
+        return (x0, y0, x1, y1)
+
+    def redrawAll(mode, canvas):
+        canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
+                           text='YCN Points Tally', font='Arial 25 bold')
+
+        mode.drawBars(canvas)
+
+    def drawBars(mode, canvas):
+        colIndex = 1
+        for judge in mode.compSelection.recallPercentages:
+            percentage = mode.compSelection.recallPercentages[judge]
+            barYBottom = 100
+            barYTop = barYBottom - percentage
+            for rowIndex in range(barYBottom, barYTop + 1, -1):
+                (x0, y0, x1, y1) = mode.getCellBounds(rowIndex, colIndex)
+                canvas.create_rectangle(x0, y0, x1, y1, fill = 'light blue')
+            mode.drawJudgeName(canvas, colIndex, judge)
+            colIndex += 2
+
+    def drawJudgeName(mode, canvas, colIndex, judge):
+        nameRowIndex = 101
+        (x0, y0, x1, y1) = mode.getCellBounds(nameRowIndex, colIndex)
+        canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2, text = judge)
+
+
+
+
+
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
