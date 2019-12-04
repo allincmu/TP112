@@ -80,9 +80,9 @@ class Competition(object):
         # print('done comp ', endTime - startTime)
 
     def __repr__(self):
-        compStr = ''
-        for event in self.events:
-            compStr += (str(self.events[event]) + '\n')
+        # compStr = ''
+        # for event in self.events:
+        #     compStr += (str(self.events[event]) + '\n')
         return self.name
 
     def getEvents(self, dancer):
@@ -504,9 +504,8 @@ class ElliottToy(object):
                                   'Foxtrot': 5, 'Quickstep': 5, 'Waltz': 3},
                      'Smooth': {'Total': 8, 'V. Waltz': 0, 'Tango': 2,
                                 'Foxtrot': 2, 'Waltz': 4}}}
-        self.competitionList = ['02-16-19 - The UPenn Classic',
-                                '10-26-19 - Keystone Dancesport Classic',
-                                '11-23-19 - OSB Collegiate Challenge 2019']
+        competition = TestCompetition('Ohio Star Ball')
+        self.competitionList = [competition]
 
 
 class SplashScreenMode(Mode):
@@ -594,12 +593,12 @@ class YCNMode(Mode):
     def getCellBounds(mode, row, col):
         gridWidth = mode.app.width - 2 * mode.app.margin
         gridHeight = mode.app.height - 2 * mode.app.margin
-        columnWidth = gridWidth / mode.cols
-        rowHeight = gridHeight / mode.rows
-        x0 = mode.app.margin + col * columnWidth
-        x1 = mode.app.margin + (col + 1) * columnWidth
-        y0 = mode.app.margin + row * rowHeight
-        y1 = mode.app.margin + (row + 1) * rowHeight
+        mode.columnWidth = gridWidth / mode.cols
+        mode.rowHeight = gridHeight / mode.rows
+        x0 = mode.app.margin + col * mode.columnWidth
+        x1 = mode.app.margin + (col + 1) * mode.columnWidth
+        y0 = mode.app.margin + row * mode.rowHeight
+        y1 = mode.app.margin + (row + 1) * mode.rowHeight
         return (x0, y0, x1, y1)
 
     def redrawAll(mode, canvas):
@@ -769,6 +768,27 @@ class testUsingET(Mode):
         mode.app.setActiveMode(mode.app.menuMode)
 
 
+class TestCompetition(Competition):
+    def __init__(self, name):
+        self.name = name
+        self.recallPercentages = {'12': 65, '13': 74, '15': 20, '16': 41,
+                                  '17': 26, '18': 10, '19': 21, '21': 26,
+                                  '14': 63, '20': 22, '10': 73, '11': 70}
+
+    # def __repr__(self):
+    #     return self.name
+
+    # Overrides the superclass's function because the call to this function
+    # is unnecessary as self.recallPercentages has been manually defined
+    def getRecallPercentagesForComp(self):
+        pass
+
+    # Overrides the superclass's function because the call to this function
+    # is unnecessary for the test class
+    def getResultsTablesForComp(self):
+        pass
+
+
 class MenuMode(Mode):
     def keyPressed(mode, event):
         if event.key == '1':
@@ -854,15 +874,22 @@ class CompPicker(Mode):
 # TODO: implement recall graph mode
 class RecallGraphMode(Mode):
 
+
+
+
     def appStarted(mode):
+        mode.axisStartRow = 100
+        mode.axisStartCol = 1
+        mode.rows = 101
+        mode.app.margin = 50
         mode.resetMode()
 
     def resetMode(mode):
         mode.compSelection.getRecallPercentagesForComp()
         numJudges = len(mode.compSelection.recallPercentages)
-        mode.rows = 101
+
         mode.cols = numJudges * 2 + 1
-        mode.app.margin = 50
+
 
     def keyPressed(mode, event):
         mode.app.setActiveMode(mode.app.compPicker)
@@ -881,13 +908,19 @@ class RecallGraphMode(Mode):
         y1 = mode.app.margin + (row + 1) * rowHeight
         if row == 101:
             y1 = mode.app.margin + (row + 4) * rowHeight
-        return (x0, y0, x1, y1)
+        return x0, y0, x1, y1
 
     def redrawAll(mode, canvas):
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text='YCN Points Tally', font='Arial 25 bold')
 
         mode.drawBars(canvas)
+        mode.drawAxis(canvas)
+
+        text = 'Press any key to return to the Competition Selection Menu'
+        canvas.create_text(mode.app.width / 2,
+                           mode.app.height - mode.app.margin / 2 / 2,
+                           text=text, fill='red')
 
     def drawBars(mode, canvas):
         colIndex = 1
@@ -897,19 +930,18 @@ class RecallGraphMode(Mode):
             barYTop = barYBottom - percentage
             for rowIndex in range(barYBottom, barYTop + 1, -1):
                 (x0, y0, x1, y1) = mode.getCellBounds(rowIndex, colIndex)
-                canvas.create_rectangle(x0, y0, x1, y1, fill = 'light blue')
+                canvas.create_rectangle(x0, y0, x1, y1, fill='light blue',
+                                        outline='light blue')
             mode.drawJudgeName(canvas, colIndex, judge)
             colIndex += 2
 
     def drawJudgeName(mode, canvas, colIndex, judge):
         nameRowIndex = 101
         (x0, y0, x1, y1) = mode.getCellBounds(nameRowIndex, colIndex)
-        canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2, text = judge)
+        canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2, text=judge)
 
-
-
-
-
+    def drawAxis(mode, canvas):
+        pass
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
