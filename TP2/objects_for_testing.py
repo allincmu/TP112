@@ -1,4 +1,14 @@
-from ballroom_objects import *
+import time
+import urllib.request
+import decimal
+from tkinter import *
+
+from bs4 import BeautifulSoup
+# From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
+from cmu_112_graphics import *
+from mechanize import Browser
+
+from ballroom_objects import Competition
 
 
 class ElliottToy(object):

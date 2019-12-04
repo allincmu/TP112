@@ -1,3 +1,26 @@
+import time
+import urllib.request
+import decimal
+from tkinter import *
+
+from bs4 import BeautifulSoup
+# From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
+from cmu_112_graphics import *
+from mechanize import Browser
+
+############################## Helper Functions ###############################
+
+# From: https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
+def roundHalfUp(d):
+    # Round to nearest with ties going away from zero.
+    rounding = decimal.ROUND_HALF_UP
+    # See other rounding options here:
+    # https://docs.python.org/3/library/decimal.html#rounding-modes
+    return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
+
+
+
+
 class Competition(object):
     competitions = dict()
 
@@ -75,7 +98,6 @@ class Competition(object):
                     else:
                         self.numberOfRecalls[judgeNumber] = 1
 
-        print2dList(resultTable)
         print(self.numberOfRecalls)
         print(self.numberOfPossibleRecalls, '\n')
 
