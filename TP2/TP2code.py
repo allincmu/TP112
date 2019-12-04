@@ -42,12 +42,12 @@ class SplashScreenMode(Mode):
             return
 
         firstName = mode.app.getUserInput("Competitor's First Name: ")
-        if (firstName == None):
-            mode.app.showMessage('You canceled!')
+        if firstName is None or firstName == '':
+            mode.app.showMessage('First Name cannot be blank!')
         else:
             lastName = mode.app.getUserInput("Competitor's Last Name: ")
-            if (lastName == None):
-                mode.app.showMessage('You canceled!')
+            if lastName is None or lastName == '':
+                mode.app.showMessage('Last Name cannot be blank!')
             else:
                 firstName = firstName.title()
                 lastName = lastName.title()
@@ -368,7 +368,6 @@ class CompPicker(Mode):
                 mode.msg += ('\tPress ' + str(i) + ':\t' + compName + '\n')
 
 
-# TODO: implement recall graph mode
 class RecallGraphMode(Mode):
 
     def appStarted(mode):
@@ -377,8 +376,9 @@ class RecallGraphMode(Mode):
         mode.rows = 101
         mode.app.margin = 50
         mode.axisFontSize = 'Arial 12'
+        mode.axisTickLength = 10
+        mode.axisTickFrequency = 10
         mode.resetMode()
-
 
     def resetMode(mode):
         mode.compSelection.getRecallPercentagesForComp()
@@ -395,17 +395,17 @@ class RecallGraphMode(Mode):
     def getCellBounds(mode, row, col):
         gridWidth = mode.app.width - 2 * mode.app.margin
         gridHeight = mode.app.height - 2 * mode.app.margin
-        columnWidth = gridWidth / mode.cols
+        columnWidth = gridWidth / (mode.cols + 1)
         rowHeight = gridHeight / (mode.rows + 5)
-        x0 = mode.app.margin + col * columnWidth
-        x1 = mode.app.margin + (col + 1) * columnWidth
+        x0 = mode.app.margin + (col + 1)* columnWidth
+        x1 = mode.app.margin + (col + 2) * columnWidth
         y0 = mode.app.margin + row * rowHeight
         y1 = mode.app.margin + (row + 1) * rowHeight
         if row == 101:
             y1 = mode.app.margin + (row + 4) * rowHeight
         return x0, y0, x1, y1
 
-    # TODO: Remove this
+    # TODO: Remove this before TP3 submission
     def drawGrid(app, canvas):
         # draw grid of cells
         for row in range(app.rows):
@@ -415,7 +415,7 @@ class RecallGraphMode(Mode):
                 canvas.create_rectangle(x0, y0, x1, y1, fill=fill)
 
     def redrawAll(mode, canvas):
-        mode.drawGrid(canvas)  # TODO: Remove This
+        mode.drawGrid(canvas)  # TODO: Remove this before TP3 submission
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text=f'Recall Percentage Graph for '
                                 f'{mode.compSelection}',
@@ -469,6 +469,19 @@ class RecallGraphMode(Mode):
 
         canvas.create_line(bx0, by1, tx0, ty0)
         canvas.create_line(bx0, by1, rx1, ry1)
+
+        mode.drawAxisTicks(mode.axisTickFrequency, canvas)
+
+    def drawAxisTicks(mode, frequency, canvas):
+        for tick in range(0, mode.axisStartRow, frequency):
+            x0, y0, x1, y1 = mode.getCellBounds(tick, mode.axisStartCol)
+            tickY = y0
+            tickX1 = x0 - mode.axisTickLength / 2
+            tickX2 = x0 + mode.axisTickLength / 2
+            canvas.create_line(tickX1, tickY, tickX2, tickY)
+
+            tickValue = 100 - tick
+            canvas.create_text(tickX1 - 5, tickY, text=tickValue, anchor='e')
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
