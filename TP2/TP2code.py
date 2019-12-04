@@ -23,7 +23,6 @@ def roundHalfUp(d):
     return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
 
 
-
 ################################## O2CM App ##################################
 
 
@@ -358,7 +357,7 @@ class CompPicker(Mode):
 
     def getMsg(mode):
         if mode.compSelected:
-            mode.msg = f'Pulling recall data at {mode.compSelection} \n'
+            mode.msg = f'Pulling recall data for {mode.compSelection} \n'
             mode.msg += 'Please Wait... This will take several minutes.'
 
         else:
@@ -374,10 +373,12 @@ class RecallGraphMode(Mode):
 
     def appStarted(mode):
         mode.axisStartRow = 100
-        mode.axisStartCol = 1
+        mode.axisStartCol = 0
         mode.rows = 101
         mode.app.margin = 50
+        mode.axisFontSize = 'Arial 12'
         mode.resetMode()
+
 
     def resetMode(mode):
         mode.compSelection.getRecallPercentagesForComp()
@@ -404,16 +405,36 @@ class RecallGraphMode(Mode):
             y1 = mode.app.margin + (row + 4) * rowHeight
         return x0, y0, x1, y1
 
+    # TODO: Remove this
+    def drawGrid(app, canvas):
+        # draw grid of cells
+        for row in range(app.rows):
+            for col in range(app.cols):
+                (x0, y0, x1, y1) = app.getCellBounds(row, col)
+                fill = "cyan"
+                canvas.create_rectangle(x0, y0, x1, y1, fill=fill)
+
     def redrawAll(mode, canvas):
+        mode.drawGrid(canvas)  # TODO: Remove This
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
-                           text='YCN Points Tally', font='Arial 25 bold')
+                           text=f'Recall Percentage Graph for '
+                                f'{mode.compSelection}',
+                           font='Arial 25 bold')
 
         mode.drawBars(canvas)
         mode.drawAxis(canvas)
 
+        canvas.create_text(mode.app.width / 2,
+                           mode.app.height - mode.app.margin * (1 - 1 / 4),
+                           text='Judge Number', font=mode.axisFontSize)
+
+        canvas.create_text(mode.app.margin / 2, mode.app.height / 2,
+                           text='Recall Percentage (%)',
+                           font=mode.axisFontSize, angle=90)
+
         text = 'Press any key to return to the Competition Selection Menu'
         canvas.create_text(mode.app.width / 2,
-                           mode.app.height - mode.app.margin / 2 / 2,
+                           mode.app.height - mode.app.margin / 4,
                            text=text, fill='red')
 
     def drawBars(mode, canvas):
@@ -426,6 +447,11 @@ class RecallGraphMode(Mode):
                 (x0, y0, x1, y1) = mode.getCellBounds(rowIndex, colIndex)
                 canvas.create_rectangle(x0, y0, x1, y1, fill='light blue',
                                         outline='light blue')
+
+            percentageRow = barYBottom - 3
+            (x0, y0, x1, y1) = mode.getCellBounds(percentageRow, colIndex)
+            canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
+                               text=f'{percentage}%')
             mode.drawJudgeName(canvas, colIndex, judge)
             colIndex += 2
 
@@ -435,7 +461,14 @@ class RecallGraphMode(Mode):
         canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2, text=judge)
 
     def drawAxis(mode, canvas):
-        pass
+        (bx0, by0, bx1, by1) = mode.getCellBounds(mode.axisStartRow,
+                                                  mode.axisStartCol)
+        (tx0, ty0, tx1, ty1) = mode.getCellBounds(0, mode.axisStartCol)
+        (rx0, ry0, rx1, ry1) = mode.getCellBounds(mode.axisStartRow,
+                                                  mode.cols - 1)
+
+        canvas.create_line(bx0, by1, tx0, ty0)
+        canvas.create_line(bx0, by1, rx1, ry1)
 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
