@@ -13,6 +13,15 @@ def roundHalfUp(d):
     return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
 
 
+def importBackground(app, url, appWidth=1000):
+    background = app.loadImage(url)
+    photoWidth, photoHeight = background.size
+    background = app.scaleImage(background,
+                                appWidth /
+                                min(photoWidth, photoHeight))
+    return background
+
+
 ################################## O2CM App ##################################
 
 
@@ -21,6 +30,7 @@ class SplashScreenMode(Mode):
         url = 'https://cdn.hipwallpaper.com/i/37/47/1l7FCt.jpg'
         mode.background = mode.app.loadImage(url)
         mode.background = mode.app.scaleImage(mode.background, 2 / 3)
+
         mode.msg = 'Press any key to enter a dancer!'
         mode.dancerSet = False
 
@@ -79,10 +89,18 @@ class SplashScreenMode(Mode):
 
 
 class YCNMode(Mode):
+
+
+    def createBackground(mode):
+        url = ('https://wallpapertag.com/wallpaper/full/3/2/4/142440-cool-' +
+               'blue-ombre-background-2560x1600-tablet.jpg')
+        mode.background = importBackground(mode.app, url)
+
     def appStarted(mode):
+        mode.createBackground()
+
         mode.rows = 28
         mode.cols = 6
-        
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
@@ -119,6 +137,8 @@ class YCNMode(Mode):
         return (x0, y0, x1, y1)
 
     def redrawAll(mode, canvas):
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text='YCN Points Tally', font='Arial 25 bold')
 
@@ -134,7 +154,7 @@ class YCNMode(Mode):
             if row in [1, 7, 14, 21]: continue
 
             if row == 0:
-                fill = 'light green'
+                fill = 'orange'
             else:
                 fill = None
             for col in range(mode.cols):
@@ -212,13 +232,15 @@ class YCNMode(Mode):
 # Subclass of YCNMode
 class YCNModeCondensed(YCNMode):
     def appStarted(mode):
+        super().createBackground()
         mode.rows = 5
         mode.cols = 5
-        
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
     def redrawAll(mode, canvas):
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text='YCN Points Tally (Condensed)',
                            font='Arial 25 bold')
@@ -233,7 +255,7 @@ class YCNModeCondensed(YCNMode):
 
         for row in range(mode.rows):
             if row == 0:
-                fill = 'light blue'
+                fill = 'orange'
             else:
                 fill = None
             for col in range(mode.cols):
@@ -254,7 +276,6 @@ class YCNModeCondensed(YCNMode):
         for row in range(1, mode.rows):
             col = 0
             style = mode.yheaders[row - 1]
-            # getCellBounds(row, col) inherited from superclass
             (x0, y0, x1, y1) = mode.getCellBounds(row, col)
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=style, font=font)
@@ -293,7 +314,6 @@ class MenuMode(Mode):
         mode.background = mode.app.scaleImage(mode.background,
                                               mode.app.width / photoWidth)
 
-
     def keyPressed(mode, event):
         if event.key == '4':
             mode.app.setActiveMode(mode.app.splashScreenMode)
@@ -322,13 +342,22 @@ class MenuMode(Mode):
         yshift = 50
         xshift = 100
 
-        canvas.create_text(mode.app.width * 8/10,
+        canvas.create_text(741,
                            mode.app.height / 4,
-                           text=menuText, font='Arial 14', fill='white')
+                           text=menuText, font='Arial 17', fill='white')
+
+    def mousePressed(mode, event):
+        print(event.x, event.y)
 
 
 class CompPicker(Mode):
+    def createBackground(mode):
+        url = ('http://wallpaperping.com/wp-content/uploads/2018/10/blur-' +
+               'blue-gradient-cool-background-sp-2048x1152.jpg')
+        mode.background = importBackground(mode.app, url)
+
     def appStarted(mode):
+        mode.createBackground()
         mode.resetMode()
 
     def resetMode(mode):
@@ -364,6 +393,8 @@ class CompPicker(Mode):
         mode.getMsg()
 
     def redrawAll(mode, canvas):
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
         font = 'Arial 20'
         canvas.create_text(mode.app.width / 2, mode.app.height / 2,
                            text=mode.msg, font=font)
@@ -388,7 +419,13 @@ class CompPicker(Mode):
 
 class RecallGraphMode(Mode):
 
+    def createBackground(mode):
+        url = ('http://wallpaperping.com/wp-content/uploads/2018/10/blur-' +
+               'blue-gradient-cool-background-sp-2048x1152.jpg')
+        mode.background = importBackground(mode.app, url)
+
     def appStarted(mode):
+        mode.createBackground()
         mode.axisStartRow = 100
         mode.axisStartCol = 0
         mode.rows = 101
@@ -423,6 +460,8 @@ class RecallGraphMode(Mode):
         return x0, y0, x1, y1
 
     def redrawAll(mode, canvas):
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text=f'Recall Percentage Graph for '
                                 f'{mode.compSelection}',
@@ -442,7 +481,7 @@ class RecallGraphMode(Mode):
         text = 'Press any key to return to the Competition Selection Menu'
         canvas.create_text(mode.app.width / 2,
                            mode.app.height - mode.app.margin / 4,
-                           text=text, fill='red')
+                           text=text, fill='orange')
 
     def drawBars(mode, canvas):
         colIndex = 1
