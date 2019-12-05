@@ -1,4 +1,4 @@
-from ballroom_objects import *
+from ballroom_objects import Competition
 
 
 class ElliottToy(object):
@@ -52,9 +52,6 @@ class TestCompetition(Competition):
         self.recallPercentages = {'12': 65, '13': 74, '15': 20, '16': 41,
                                   '17': 26, '18': 10, '19': 21, '21': 26,
                                   '14': 63, '20': 22, '10': 73, '11': 70}
-
-    # def __repr__(self):
-    #     return self.name
 
     # Overrides the superclass's function because the call to this function
     # is unnecessary as self.recallPercentages has been manually defined
