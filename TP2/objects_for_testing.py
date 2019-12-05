@@ -1,13 +1,3 @@
-import time
-import urllib.request
-import decimal
-from tkinter import *
-
-from bs4 import BeautifulSoup
-# From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
-from cmu_112_graphics import *
-from mechanize import Browser
-
 from ballroom_objects import Competition
 
 
@@ -62,9 +52,6 @@ class TestCompetition(Competition):
         self.recallPercentages = {'12': 65, '13': 74, '15': 20, '16': 41,
                                   '17': 26, '18': 10, '19': 21, '21': 26,
                                   '14': 63, '20': 22, '10': 73, '11': 70}
-
-    # def __repr__(self):
-    #     return self.name
 
     # Overrides the superclass's function because the call to this function
     # is unnecessary as self.recallPercentages has been manually defined

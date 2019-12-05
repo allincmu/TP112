@@ -1,13 +1,3 @@
-import time
-import urllib.request
-import decimal
-from tkinter import *
-
-from bs4 import BeautifulSoup
-# From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
-from cmu_112_graphics import *
-from mechanize import Browser
-
 from ballroom_objects import *
 from objects_for_testing import *
 
@@ -59,8 +49,7 @@ class SplashScreenMode(Mode):
                 mode.lastName = lastName
 
     def timerFired(mode):
-        if mode.dancerSet == True:
-            print(mode.firstName, mode.lastName)
+        if mode.dancerSet:
             mode.app.competitor = Dancer(mode.firstName, mode.lastName)
             if mode.app.competitor.competitions == ['No Results on File']:
                 mode.app.showMessage(f'No Results on O2CM for {mode.name}.\n' +
@@ -68,7 +57,6 @@ class SplashScreenMode(Mode):
                 mode.resetMode()
                 return
             mode.app.setActiveMode(mode.app.menuMode)
-
 
     def redrawAll(mode, canvas):
         fontTitle = 'Arial 30 bold'
@@ -357,6 +345,11 @@ class CompPicker(Mode):
         canvas.create_text(mode.app.width / 2, mode.app.height / 2,
                            text=mode.msg, font=font)
 
+        text = 'Press any nonnumerical key to return to the Main Menu'
+        canvas.create_text(mode.app.width / 2,
+                           mode.app.height - mode.app.margin / 4,
+                           text=text, fill='red')
+
     def getMsg(mode):
         if mode.compSelected:
             mode.msg = f'Pulling recall data for {mode.compSelection} \n'
@@ -399,7 +392,7 @@ class RecallGraphMode(Mode):
         gridHeight = mode.app.height - 2 * mode.app.margin
         columnWidth = gridWidth / (mode.cols + 1)
         rowHeight = gridHeight / (mode.rows + 5)
-        x0 = mode.app.margin + (col + 1)* columnWidth
+        x0 = mode.app.margin + (col + 1) * columnWidth
         x1 = mode.app.margin + (col + 2) * columnWidth
         y0 = mode.app.margin + row * rowHeight
         y1 = mode.app.margin + (row + 1) * rowHeight
@@ -407,17 +400,7 @@ class RecallGraphMode(Mode):
             y1 = mode.app.margin + (row + 4) * rowHeight
         return x0, y0, x1, y1
 
-    # TODO: Remove this before TP3 submission
-    def drawGrid(app, canvas):
-        # draw grid of cells
-        for row in range(app.rows):
-            for col in range(app.cols):
-                (x0, y0, x1, y1) = app.getCellBounds(row, col)
-                fill = "cyan"
-                canvas.create_rectangle(x0, y0, x1, y1, fill=fill)
-
     def redrawAll(mode, canvas):
-        #mode.drawGrid(canvas)  # TODO: Remove this before TP3 submission
         canvas.create_text(mode.app.width / 2, mode.app.margin / 2,
                            text=f'Recall Percentage Graph for '
                                 f'{mode.compSelection}',

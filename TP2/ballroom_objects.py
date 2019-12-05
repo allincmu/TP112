@@ -1,24 +1,22 @@
-import time
-import urllib.request
 import decimal
-from tkinter import *
+import urllib.request
 
 from bs4 import BeautifulSoup
+from mechanize import Browser
+
 # From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
 from cmu_112_graphics import *
-from mechanize import Browser
+
 
 ############################## Helper Functions ###############################
 
 # From: https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 def roundHalfUp(d):
-    # Round to nearest with ties going away from zero.
+    # Round to nearest with ties going away from zero
     rounding = decimal.ROUND_HALF_UP
     # See other rounding options here:
     # https://docs.python.org/3/library/decimal.html#rounding-modes
     return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
-
-
 
 
 class Competition(object):
@@ -26,9 +24,9 @@ class Competition(object):
 
     def __init__(self, html, name, dancer):
         self.recallPercentages = dict()
+        self.recallPercentagesCalculated = False
         self.dancer = dancer
         self.events = dict()
-        startTime = time.time()
         self.name = name
         self.html = BeautifulSoup(html, features='html.parser')
         self.getEvents(dancer)
@@ -37,13 +35,8 @@ class Competition(object):
         self.numberOfRecalls = dict()
         Competition.competitions[self.name] = self
         # self.getJudgeNumbers()
-        endTime = time.time()
-        # print('done comp ', endTime - startTime)
 
     def __repr__(self):
-        # compStr = ''
-        # for event in self.events:
-        #     compStr += (str(self.events[event]) + '\n')
         return self.name
 
     def getEvents(self, dancer):
@@ -62,21 +55,22 @@ class Competition(object):
             eventLink = self.events[event]
 
     def getResultsTablesForComp(self):
-        start = time.time()
         for eventName in self.events:
             event = self.events[eventName]
             event.getResultsTablesForEvent()
-        end = time.time()
-        print('done comp', end - start)
 
     def getRecallPercentagesForComp(self):
-        for eventName in self.events:
-            event = self.events[eventName]
-            self.getRecallPercentagesForEvent(event)
-        self.calculateRecallPercentages()
-        for judge in self.recallPercentages:
-            percentage = self.recallPercentages[judge]
-            print(f'Judge {judge}: {percentage}%')
+        if self.recallPercentagesCalculated:
+            return
+
+        else:
+            for eventName in self.events:
+                event = self.events[eventName]
+                self.getRecallPercentagesForEvent(event)
+            self.calculateRecallPercentages()
+            for judge in self.recallPercentages:
+                percentage = self.recallPercentages[judge]
+            self.recallPercentagesCalculated = True
 
     def getRecallPercentagesForEvent(self, event):
         for heat in event.resultsTables:
@@ -97,9 +91,6 @@ class Competition(object):
                         self.numberOfRecalls[judgeNumber] += 1
                     else:
                         self.numberOfRecalls[judgeNumber] = 1
-
-        print(self.numberOfRecalls)
-        print(self.numberOfPossibleRecalls, '\n')
 
     def calculateRecallPercentages(self):
         for judge in self.numberOfPossibleRecalls:
@@ -238,9 +229,6 @@ class Event(object):
         if self.rounds == 0:
             self.rounds = 1
 
-        if self.rounds == 0:
-            print('error')
-
     def getPlace(self):
         endIndex = self.eventName.find(')')
         self.place = int(self.eventName[0:endIndex])
@@ -252,7 +240,7 @@ class Event(object):
         elif self.rounds > 2:
             if self.place <= 3:
                 self.YCNPoints = 4 - self.place
-            elif self.place > 3 and self.place <= 6:
+            elif 3 < self.place <= 6:
                 self.YCNPoints = 1
         else:
             self.YCNPoints = 0
@@ -266,24 +254,21 @@ class Event(object):
                     self.number = element.previous_sibling.string
 
     def getResultsTablesForEvent(self):
-        starttime = time.time()
         maxRound = self.rounds - 1
         for i in range(maxRound, 0, -1):
             roundName = Event.getRoundName(i)
             resultTable = self.getResultTableForRound(i, maxRound)
             if len(resultTable) == 2:
                 self.resultsTables[roundName] = resultTable
-            # print(self.eventName, roundName, resultTable)
+
             if resultTable[-1][-1] != 'R':
                 break
-        endtime = time.time()
-        print('done results tables ', endtime - starttime)
 
     def getRoundPage(self, i):
         br = Browser()
         br.addheaders = [('User-agent', 'Firefox')]
         br.open(self.url)
-        if i != None:
+        if i is not None:
             br.select_form(name="selectRound")
             br['selCount'] = [str(i)]
             br.submit()
@@ -349,7 +334,6 @@ class Dancer(object):
         self.createYCNDict(self.bronzeYCN)
         self.createYCNDict(self.silverYCNs)
         self.createYCNDict(self.goldYCNs)
-
         self.getYCNPoints()
 
     def getCompetitions(self):
@@ -374,7 +358,8 @@ class Dancer(object):
             compHTML = self.resultsPageHTML[startIndex:endIndex]
             self.competitionList.append(Competition(compHTML, compName, self))
 
-    def createYCNDict(self, d):
+    @staticmethod
+    def createYCNDict(d):
         d['Latin'] = dict()
         d['Rhythm'] = dict()
         d['Standard'] = dict()
