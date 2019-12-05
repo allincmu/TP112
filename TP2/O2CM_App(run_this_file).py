@@ -18,6 +18,9 @@ def roundHalfUp(d):
 
 class SplashScreenMode(Mode):
     def appStarted(mode):
+        url = 'https://cdn.hipwallpaper.com/i/37/47/1l7FCt.jpg'
+        mode.background = mode.app.loadImage(url)
+        mode.background = mode.app.scaleImage(mode.background, 2 / 3)
         mode.msg = 'Press any key to enter a dancer!'
         mode.dancerSet = False
 
@@ -59,21 +62,27 @@ class SplashScreenMode(Mode):
             mode.app.setActiveMode(mode.app.menuMode)
 
     def redrawAll(mode, canvas):
-        fontTitle = 'Arial 30 bold'
-        fontMsg = 'Arial 20 bold'
-        canvas.create_text(mode.width / 2, 150,
-                           text='Ballroom YCN Points Calculator',
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
+        fontTitle = 'Arial 24 bold'
+        fontMsg = 'Arial 18 bold'
+
+        textCenterX = 325
+        canvas.create_text(textCenterX, 240,
+                           text='Ballroom Competition Recall Statistics',
                            font=fontTitle)
-        canvas.create_text(mode.width / 2, 190, text='and Statistics Program',
+        canvas.create_text(textCenterX, 280,
+                           text='and YCN Points Calculator',
                            font=fontTitle)
-        canvas.create_text(mode.width / 2, 300, text=mode.msg, font=fontMsg)
+        canvas.create_text(textCenterX, 380, text=mode.msg,
+                           font=fontMsg)
 
 
 class YCNMode(Mode):
     def appStarted(mode):
         mode.rows = 28
         mode.cols = 6
-        mode.app.margin = 50
+        
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
@@ -205,7 +214,7 @@ class YCNModeCondensed(YCNMode):
     def appStarted(mode):
         mode.rows = 5
         mode.cols = 5
-        mode.app.margin = 50
+        
 
         mode.styleOrder = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
@@ -277,31 +286,45 @@ class testUsingET(Mode):
 
 
 class MenuMode(Mode):
+    def appStarted(mode):
+        url = 'https://wallpapercave.com/wp/wp2004203.jpg'
+        mode.background = mode.app.loadImage(url)
+        photoWidth = 1440
+        mode.background = mode.app.scaleImage(mode.background,
+                                              mode.app.width / photoWidth)
+
+
     def keyPressed(mode, event):
-        if event.key == '1':
+        if event.key == '4':
             mode.app.setActiveMode(mode.app.splashScreenMode)
             mode.app.splashScreenMode.resetMode()
-        elif event.key == '2':
+        elif event.key == '1':
             mode.app.setActiveMode(mode.app.ycnMode)
-        elif event.key == '3':
+        elif event.key == '2':
             mode.app.setActiveMode(mode.app.ycnModeCondensed)
-        elif event.key == '4':
+        elif event.key == '3':
             mode.app.setActiveMode(mode.app.compPicker)
             mode.app.compPicker.resetMode()
 
         # More will be added later
 
     def redrawAll(mode, canvas):
-        menuText = '\t\tMenu \n\n'
-        menuText += 'Press 1 - To return to the start screen\n'
-        menuText += 'Press 2 - To view to the YCN points chart (expanded)\n'
-        menuText += 'Press 3 - To view to the YCN points chart (condensed)\n'
-        menuText += 'Press 4 - To view to the Recall Rate Graph\n'
+        canvas.create_image(mode.width / 2, mode.height / 2,
+                            image=ImageTk.PhotoImage(mode.background))
+        menuText = '\t\tMain Menu \n\n'
+        menuText += 'Press 1 - View YCN points chart (Detailed)\n'
+        menuText += 'Press 2 - View YCN points chart (Summary)\n'
+        menuText += 'Press 3 - Generate Recall Rate Graph\n'
+        menuText += 'Press 4 - To Enter a Different Competitor\n'
         # menuText += 'Press 5 - To view to the Competetive Summary\n'
         # menuText += 'Press 6 - To view to the Raw Results\n'
 
-        canvas.create_text(mode.app.width / 2, mode.app.height / 2,
-                           text=menuText, font='Arial 20')
+        yshift = 50
+        xshift = 100
+
+        canvas.create_text(mode.app.width * 8/10,
+                           mode.app.height / 4,
+                           text=menuText, font='Arial 14', fill='white')
 
 
 class CompPicker(Mode):
@@ -369,7 +392,6 @@ class RecallGraphMode(Mode):
         mode.axisStartRow = 100
         mode.axisStartCol = 0
         mode.rows = 101
-        mode.app.margin = 50
         mode.axisFontSize = 'Arial 12'
         mode.axisTickLength = 10
         mode.axisTickFrequency = 10
@@ -482,6 +504,7 @@ class O2CMApp(ModalApp):
         app.recallGraphMode = RecallGraphMode()
         app.setActiveMode(app.splashScreenMode)
         app.timerDelay = 500
+        app.margin = 50
 
 
 app = O2CMApp(width=1000, height=650)
