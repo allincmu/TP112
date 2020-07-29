@@ -1,3 +1,4 @@
+# Contains objects that allow the program to compute YCN and recall percentage
 import decimal
 import urllib.request
 
@@ -5,6 +6,8 @@ from bs4 import BeautifulSoup
 from mechanize import Browser
 
 # From https://www.cs.cmu.edu/~112/notes/cmu_112_graphics.py
+
+
 from cmu_112_graphics import *
 
 
@@ -34,7 +37,6 @@ class Competition(object):
         self.numberOfPossibleRecalls = dict()
         self.numberOfRecalls = dict()
         Competition.competitions[self.name] = self
-        # self.getJudgeNumbers()
 
     def __repr__(self):
         return self.name
@@ -48,11 +50,6 @@ class Competition(object):
                 dancer.eventsByLevel[event.level].append(event)
             else:
                 dancer.eventsByLevel[event.level] = [event]
-
-    # TODO: JUDGES LETTERS
-    def getJudgeLetters(self):
-        for event in self.events:
-            eventLink = self.events[event]
 
     def getResultsTablesForComp(self):
         for eventName in self.events:
@@ -147,6 +144,7 @@ class Event(object):
         eventStr += f'\n\tPoints: {self.YCNPoints}'
         return self.eventName
 
+    # gets the tier of each round i.e. quarterfinal, semifinal
     @staticmethod
     def getRoundName(i):
         roundNames = ['Final', 'Semi-Final', 'Quarter-Final']
@@ -156,6 +154,7 @@ class Event(object):
             deno = 2 ** i
             return "1/" + str(deno) + "-Final"
 
+    # Gets the style and dance of the event
     def getStyleAndDance(self):
         if 'Am.' in self.eventName:
             for dance in Event.smoothDances:
@@ -198,6 +197,8 @@ class Event(object):
         if self.dance == []:
             self.getDanceFromEventPage()
 
+    # goes to the event page to get the dance if the event name doesn't
+    # include the dances
     def getDanceFromEventPage(self):
         dances = self.eventHTML.find_all('td', attrs={'class': 'h3'})[0:-1]
         for dance in dances:
@@ -219,20 +220,24 @@ class Event(object):
                     if danceName in dance:
                         self.dance += [danceName]
 
+    # gets the syllabus level for the event
     def getLevel(self):
         for level in Event.levels:
             if level in self.eventName:
                 self.level = level
 
+    # gets the number of rounds
     def getRounds(self):
         self.rounds = len(self.eventHTML.find_all('option'))
         if self.rounds == 0:
             self.rounds = 1
 
+    # gets the final placing of the competitor
     def getPlace(self):
         endIndex = self.eventName.find(')')
         self.place = int(self.eventName[0:endIndex])
 
+    # Calculates YCN of each dance
     def getYCNPoints(self):
         if self.rounds == 2:
             if self.place <= 3:
@@ -245,6 +250,7 @@ class Event(object):
         else:
             self.YCNPoints = 0
 
+    # gets the number of the couple
     def getCoupleNumber(self, eventPage):
         tableElements = eventPage.find_all('td')
         for element in tableElements:
@@ -253,6 +259,7 @@ class Event(object):
                 if link.string == self.dancer.fullName:
                     self.number = element.previous_sibling.string
 
+    # gets all the result tables for the event
     def getResultsTablesForEvent(self):
         maxRound = self.rounds - 1
         for i in range(maxRound, 0, -1):
@@ -264,6 +271,7 @@ class Event(object):
             if resultTable[-1][-1] != 'R':
                 break
 
+    # navigates to the round page
     def getRoundPage(self, i):
         br = Browser()
         br.addheaders = [('User-agent', 'Firefox')]
@@ -277,6 +285,7 @@ class Event(object):
         soup = BeautifulSoup(br.response().read(), features='html.parser')
         return soup
 
+    # gets result table for the round
     def getResultTableForRound(self, i, maxRound):
         roundPage = self.getRoundPage(i)
         if i == maxRound:
@@ -308,6 +317,7 @@ class Event(object):
         return data
 
     @staticmethod
+    # removes data for other competitors
     def truncateExcessData(columns, data):
         colsToBeAdded = []
         for i in range(len(data[0])):
@@ -336,6 +346,7 @@ class Dancer(object):
         self.createYCNDict(self.goldYCNs)
         self.getYCNPoints()
 
+    # gets the name of each competition the dancer competed at
     def getCompetitions(self):
         content = urllib.request.urlopen(self.resultsURL).read()
         self.resultsBS = BeautifulSoup(content, features='html.parser')
@@ -359,6 +370,7 @@ class Dancer(object):
             self.competitionList.append(Competition(compHTML, compName, self))
 
     @staticmethod
+    # creates the YCN dictionary according to template
     def createYCNDict(d):
         d['Latin'] = dict()
         d['Rhythm'] = dict()
@@ -376,6 +388,7 @@ class Dancer(object):
         for dance in Event.smoothDances:
             d['Smooth'][dance] = 0
 
+    # gets YCN points for each level
     def getYCNPoints(self):
         self.getYCNForLevel('Gold', self.goldYCNs, None)
         self.getYCNForLevel('Silver', self.silverYCNs, self.goldYCNs)
@@ -387,6 +400,7 @@ class Dancer(object):
         self.ycnDict['Silver'] = self.silverYCNs
         self.ycnDict['Gold'] = self.goldYCNs
 
+    # gets the YCN points for specified level
     def getYCNForLevel(self, level, currYCNDict, prevYCNDict):
         if prevYCNDict is not None:
             for style in prevYCNDict:

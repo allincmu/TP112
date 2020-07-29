@@ -1,3 +1,5 @@
+# Contains classes to test the program
+# The attributes for these classes are all set manually no webscraping
 from ballroom_objects import Competition
 
 

@@ -1,3 +1,5 @@
+# Contains the classes for the UI
+
 from ballroom_objects import *
 from objects_for_testing import *
 
@@ -13,6 +15,7 @@ def roundHalfUp(d):
     return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
 
 
+# Gets image passed as url and returns it
 def importBackground(app, url, appWidth=1000):
     background = app.loadImage(url)
     photoWidth, photoHeight = background.size
@@ -26,6 +29,8 @@ def importBackground(app, url, appWidth=1000):
 
 
 class SplashScreenMode(Mode):
+
+    # Sets up initial values needed for the mode
     def appStarted(mode):
         url = 'https://cdn.hipwallpaper.com/i/37/47/1l7FCt.jpg'
         mode.background = mode.app.loadImage(url)
@@ -34,11 +39,13 @@ class SplashScreenMode(Mode):
         mode.msg = 'Press any key to enter a dancer!'
         mode.dancerSet = False
 
+    # Resets values that need to be wiped when a new competitor is entered
     def resetMode(mode):
         Competition.competitions = dict()
         mode.dancerSet = False
         mode.msg = 'Press any key to enter a dancer!'
 
+    # Prompts the user to enter a dancer's name when a key is pressed
     def keyPressed(mode, event):
         if event.key == 'Tab':
             mode.app.setActiveMode(mode.app.testUsingET)
@@ -61,6 +68,8 @@ class SplashScreenMode(Mode):
                 mode.firstName = firstName
                 mode.lastName = lastName
 
+    # Checks to see if the user has entered a dancer and creates a dancer object
+    # Then changes to menu mode.
     def timerFired(mode):
         if mode.dancerSet:
             mode.app.competitor = Dancer(mode.firstName, mode.lastName)
@@ -89,13 +98,13 @@ class SplashScreenMode(Mode):
 
 
 class YCNMode(Mode):
-
-
+    # initializes the background
     def createBackground(mode):
         url = ('https://wallpapertag.com/wallpaper/full/3/2/4/142440-cool-' +
                'blue-ombre-background-2560x1600-tablet.jpg')
         mode.background = importBackground(mode.app, url)
 
+    # Sets up initial values needed for the mode
     def appStarted(mode):
         mode.createBackground()
 
@@ -121,6 +130,7 @@ class YCNMode(Mode):
 
         mode.dances = smoothDances + stdDances + rhythmDances + latinDances
 
+    # returns the user to the menu when they press a key
     def keyPressed(mode, event):
         mode.app.setActiveMode(mode.app.menuMode)
 
@@ -166,6 +176,7 @@ class YCNMode(Mode):
         mode.drawDances(canvas)
         mode.addYCNPointsToTable(canvas)
 
+    # Defines the headers for the chart
     def setUpHeaders(mode):
 
         mode.xheaders = ['Style', 'Dance', 'Newcomer', 'Bronze', 'Silver',
@@ -173,6 +184,7 @@ class YCNMode(Mode):
         mode.yheaders = [('Smooth', 2), ('Standard', 8),
                          ('Rhythm', 15), ('Latin', 22)]
 
+    # Draws the row headers
     def drawTableXHeaders(mode, canvas):
         font = 'Bold'
         for col in range(mode.cols):
@@ -181,6 +193,7 @@ class YCNMode(Mode):
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=mode.xheaders[col], font=font)
 
+    # Draws column headers
     def drawTableYHeaders(mode, canvas):
         font = 'bold'
         for style, row in mode.yheaders:
@@ -189,6 +202,7 @@ class YCNMode(Mode):
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=style, font=font)
 
+    # Adds dances to the chart
     def drawDances(mode, canvas):
         col = 1
         startRow = 1
@@ -201,6 +215,7 @@ class YCNMode(Mode):
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=text, font=font)
 
+    # Puts points earned into the chart
     def addYCNPointsToTable(mode, canvas):
         levelOrder = ['Newcomer', 'Bronze', 'Silver', 'Gold']
         col = 2
@@ -267,10 +282,12 @@ class YCNModeCondensed(YCNMode):
         mode.drawTableYHeaders(canvas)
         mode.addYCNPointsToTable(canvas)
 
+    # Defines the headers for the chart
     def setUpHeaders(mode):
         mode.xheaders = ['Style', 'Newcomer', 'Bronze', 'Silver', 'Gold']
         mode.yheaders = ['Smooth', 'Standard', 'Rhythm', 'Latin']
 
+    # Draws the header row
     def drawTableYHeaders(mode, canvas):
         font = 'Bold'
         for row in range(1, mode.rows):
@@ -280,6 +297,7 @@ class YCNModeCondensed(YCNMode):
             canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2,
                                text=style, font=font)
 
+    # Draws the header col
     def addYCNPointsToTable(mode, canvas):
         levelOrder = ['Newcomer', 'Bronze', 'Silver', 'Gold']
         col = 1
@@ -314,6 +332,7 @@ class MenuMode(Mode):
         mode.background = mode.app.scaleImage(mode.background,
                                               mode.app.width / photoWidth)
 
+    # Determines what to when a menu option is selected
     def keyPressed(mode, event):
         if event.key == '4':
             mode.app.setActiveMode(mode.app.splashScreenMode)
@@ -346,24 +365,24 @@ class MenuMode(Mode):
                            mode.app.height / 4,
                            text=menuText, font='Arial 17', fill='white')
 
-    def mousePressed(mode, event):
-        print(event.x, event.y)
-
-
 class CompPicker(Mode):
     def createBackground(mode):
         url = ('http://wallpaperping.com/wp-content/uploads/2018/10/blur-' +
                'blue-gradient-cool-background-sp-2048x1152.jpg')
         mode.background = importBackground(mode.app, url)
 
+    # initializes varibles the first time the mode is called
     def appStarted(mode):
         mode.createBackground()
         mode.resetMode()
 
+    # resets variables that need to be reset everytime the mode is called
     def resetMode(mode):
         mode.compSelected = False
         mode.getMsg()
 
+    # determines if a competition was selected
+    # calls function to get recall graphs
     def timerFired(mode):
         if mode.compSelected:
             mode.compSelection.getResultsTablesForComp()
@@ -371,6 +390,7 @@ class CompPicker(Mode):
             mode.app.setActiveMode(mode.app.recallGraphMode)
             mode.app.recallGraphMode.resetMode()
 
+    # determines if input is menu item selection or return to main menu
     def keyPressed(mode, event):
         compIndex = event.key
         numComps = mode.app.competitor.competitionList
@@ -404,6 +424,7 @@ class CompPicker(Mode):
                            mode.app.height - mode.app.margin / 4,
                            text=text, fill='red')
 
+    # changes the message when a competition is selected
     def getMsg(mode):
         if mode.compSelected:
             mode.msg = f'Pulling recall data for {mode.compSelection} \n'
@@ -418,12 +439,13 @@ class CompPicker(Mode):
 
 
 class RecallGraphMode(Mode):
-
+    # gets background image
     def createBackground(mode):
         url = ('http://wallpaperping.com/wp-content/uploads/2018/10/blur-' +
                'blue-gradient-cool-background-sp-2048x1152.jpg')
         mode.background = importBackground(mode.app, url)
 
+    # Initializes variables the first time the mode is called
     def appStarted(mode):
         mode.createBackground()
         mode.axisStartRow = 100
@@ -434,12 +456,14 @@ class RecallGraphMode(Mode):
         mode.axisTickFrequency = 10
         mode.resetMode()
 
+    # Resets attributes to their default values when the mode is called
     def resetMode(mode):
         mode.compSelection.getRecallPercentagesForComp()
         numJudges = len(mode.compSelection.recallPercentages)
 
         mode.cols = numJudges * 2 + 1
 
+    # returns user to comp selection screen when key is pressed
     def keyPressed(mode, event):
         mode.app.setActiveMode(mode.app.compPicker)
         mode.app.compPicker.resetMode()
@@ -483,6 +507,7 @@ class RecallGraphMode(Mode):
                            mode.app.height - mode.app.margin / 4,
                            text=text, fill='orange')
 
+    # Draws bars
     def drawBars(mode, canvas):
         colIndex = 1
         for judge in mode.compSelection.recallPercentages:
@@ -501,11 +526,13 @@ class RecallGraphMode(Mode):
             mode.drawJudgeName(canvas, colIndex, judge)
             colIndex += 2
 
+    # Draws the Judge's number below each bar
     def drawJudgeName(mode, canvas, colIndex, judge):
         nameRowIndex = 101
         (x0, y0, x1, y1) = mode.getCellBounds(nameRowIndex, colIndex)
         canvas.create_text(x1 + (x0 - x1) / 2, y1 + (y0 - y1) / 2, text=judge)
 
+    # draws the axis
     def drawAxis(mode, canvas):
         (bx0, by0, bx1, by1) = mode.getCellBounds(mode.axisStartRow,
                                                   mode.axisStartCol)
@@ -518,6 +545,7 @@ class RecallGraphMode(Mode):
 
         mode.drawAxisTicks(mode.axisTickFrequency, canvas)
 
+    # draws the axis ticks and values
     def drawAxisTicks(mode, frequency, canvas):
         for tick in range(0, mode.axisStartRow, frequency):
             x0, y0, x1, y1 = mode.getCellBounds(tick, mode.axisStartCol)
