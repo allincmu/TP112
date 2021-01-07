@@ -365,7 +365,6 @@ class MenuMode(Mode):
                            mode.app.height / 4,
                            text=menuText, font='Arial 17', fill='white')
 
-
 class CompPicker(Mode):
     def createBackground(mode):
         url = ('http://wallpaperping.com/wp-content/uploads/2018/10/blur-' +

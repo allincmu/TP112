@@ -1,6 +1,4 @@
-# 112TP
- 
-Final Project Files: tp3.zip (in TP2 folder)
+Final Project Files: tp3.zip
 
 Project Description:
 -This program scapes a dancer’s competitive records on results.o2cm.net. 
