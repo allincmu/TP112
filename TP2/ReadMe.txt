@@ -1,3 +1,5 @@
+Final Project Files: tp3.zip
+
 Project Description:
 -This program scapes a dancer’s competitive records on results.o2cm.net. 
  The program will use the scraped data to calculate YCN points to determine 
@@ -5,6 +7,9 @@ Project Description:
  here: http://ballroom.mit.edu/index.php/ycn-proficiency-points/. The program 
  will also calculate the recall percentage of each judge at a competition and 
  generate a bar graph.
+ 
+Video Demo:
+-http://youtu.be/yO4hFfod5mw?hd=1
 
 How to Run it:
 -Run the file titled 'O2CM_App(run_this_file).py'
